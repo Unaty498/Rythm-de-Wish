@@ -69,19 +69,19 @@ function resolveId(query: string): Promise<[string, number]> {
 		let id: string;
 		if (!link) {
 			const res = await axios.get(
-			"https://www.googleapis.com/youtube/v3/search?" +
-				new URLSearchParams({
-					q: query,
-					maxResults: "1",
-					key: process.env.ytToken,
-					type: "video",
-					topicId: "/m/04rlf",
-					safeSearch: "strict",
-				})
+				"https://www.googleapis.com/youtube/v3/search?" +
+					new URLSearchParams({
+						q: query,
+						maxResults: "1",
+						key: process.env.ytToken,
+						type: "video",
+						topicId: "/m/04rlf",
+						safeSearch: "strict",
+					})
 			);
-			id = res.data.items[0].id.videoId
+			id = res.data.items[0].id.videoId;
 		} else {
-			id = youtubeRegex.exec(query)[1] ?? youtubeRegex.exec(query)[2]
+			id = youtubeRegex.exec(query)[1] ?? youtubeRegex.exec(query)[2];
 		}
 		const {
 			data: {
@@ -131,6 +131,8 @@ class Rythm extends Discord.Client {
 	queue: Collection<
 		Snowflake,
 		{
+			loop?: boolean;
+			loopQueue?: boolean;
 			player?: AudioPlayer;
 			playBegin?: number;
 			playing: { id?: string; duration?: number };
@@ -196,8 +198,9 @@ client.once("ready", () => {
 				},
 				{
 					name: "queue",
-					description: "Affiche la queue"
-				}
+					description: "Affiche la queue",
+				},
+				
 			]);
 		});
 });
@@ -317,9 +320,7 @@ client.on("interactionCreate", async (interaction) => {
 				queue: [],
 			});
 
-			client.emit("playUpdate", 
-				interaction.guildId
-			);
+			client.emit("playUpdate", interaction.guildId);
 			registerPlayer(interaction.guildId);
 		}
 
@@ -340,9 +341,9 @@ client.on("interactionCreate", async (interaction) => {
 			queue: client.queue.get(interaction.guildId).queue,
 			playBegin: Math.floor(Date.now() / 1000),
 		});
-		client.emit('playUpdate', interaction.guildId);
+		client.emit("playUpdate", interaction.guildId);
 		await interaction.reply("Skipped");
-	} else if (interaction.commandName === 'queue') {
+	} else if (interaction.commandName === "queue") {
 		if (!getVoiceConnection(interaction.guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
@@ -353,8 +354,46 @@ client.on("interactionCreate", async (interaction) => {
 		}
 		const ids = [
 			client.queue.get(interaction.guildId).playing.id,
-			...client.queue.get(interaction.guildId).queue.map(s => s.id),
+			...client.queue.get(interaction.guildId).queue.map((s) => s.id),
 		];
+		const durations = [
+			client.queue.get(interaction.guildId).playing.duration,
+			...client.queue
+				.get(interaction.guildId)
+				.queue.map((s) => s.duration),
+		];
+		const res = await axios.get(
+			"https://www.googleapis.com/youtube/v3/videos?" +
+				new URLSearchParams({
+					part: "snippet",
+					id: ids.join(","),
+					key: process.env.ytToken,
+				})
+		);
+		const queue = res.data.items.map((item, i) => [
+			item.snippet.title,
+			durations[i],
+		]) as [string, number][];
+		const queueEmbed = new MessageEmbed()
+			.setTitle("Queue :")
+			.setDescription(
+				queue
+					.map(([title, duration], i) =>
+						i === 0
+							? `Now playing : \`${title}\` - \`${durationToTime(
+									client.queue.get(interaction.guildId)
+										.playBegin -
+										Math.floor(Date.now() / 1000) +
+										client.queue.get(interaction.guildId)
+											.playing.duration
+							  )}\``
+							: `${i} - \`${title}\` - \`${durationToTime(
+									duration
+							  )}\``
+					)
+					.join("\n")
+			);
+		await interaction.reply({ embeds: [queueEmbed] });
 	}
 });
 
@@ -368,6 +407,7 @@ client.on("playUpdate", (guildId: string) => {
 			ytdl(id, {
 				filter: "audioonly",
 				quality: "highestaudio",
+				highWaterMark: 1 << 25,
 			}),
 			{
 				inputType: StreamType.Arbitrary,
