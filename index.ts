@@ -6,6 +6,7 @@ import Discord, {
 	MessageActionRow,
 	MessageEmbed,
 	MessageSelectMenu,
+	MessageSelectOptionData,
 	SelectMenuInteraction,
 	Snowflake,
 } from "discord.js";
@@ -116,42 +117,40 @@ function searchSongs(
 ): Promise<{ id: string; title: string; duration: number }[]> {
 	return new Promise<{ id: string; title: string; duration: number }[]>(
 		async (resolve, reject) => {
-			let id: string;
-			let res = await axios.get(
+			let videoIds = await axios.get(
 				"https://www.googleapis.com/youtube/v3/search?" +
 					new URLSearchParams({
 						q: query,
-						maxResults: results.toFixed(0),
+						maxResults: results.toString(),
 						key: process.env.ytToken,
 						type: "video",
 						topicId: "/m/04rlf",
 						safeSearch: "strict",
 					})
 			);
-			let ids = (res.data.items as { id: { videoId: string } }[]).map(
+			let ids = (videoIds.data.items as { id: { videoId: string } }[]).map(
 				(e) => e.id.videoId
 			);
-			let titles = (
-				res.data.items as { snippet: { title: string } }[]
-			).map((e) => e.snippet.title);
-			res = await axios.get(
+
+			let videoInfos = await axios.get(
 				"https://www.googleapis.com/youtube/v3/videos?" +
 					new URLSearchParams({
-						part: "contentDetails",
-						id: id,
+						part: "snippet,contentDetails",
+						id: ids.join(','),
 						key: process.env.ytToken,
 					})
 			);
-
-			resolve(
-				(
-					res.data.items as { contentDetails: { duration: string } }[]
-				).map((e, i) => ({
-					id: ids[i],
-					title: titles[i],
-					duration: resolveDuration(e.contentDetails.duration),
-				}))
-			);
+			let array = (
+				videoInfos.data.items as {
+					contentDetails: { duration: string };
+					snippet: { title: string };
+				}[]
+			).map((e, i) => ({
+				id: ids[i],
+				title: e.snippet.title,
+				duration: resolveDuration(e.contentDetails.duration),
+			}));
+			resolve(array);
 		}
 	);
 }
@@ -271,6 +270,20 @@ client.once("ready", () => {
 							required: false,
 						},
 					],
+				},
+				{
+					name: "clear-queue",
+					description: "Supprimme toutes les musiques de la queue"
+				},
+				{
+					name: "clear",
+					description: "Supprimme une musique de la queue",
+					options: [{
+						name: "position",
+						description: "Position du morceau dans la queue",
+						type: "INTEGER",
+						required: true
+					}]
 				},
 				{
 					name: "skip",
@@ -425,26 +438,44 @@ client.on("interactionCreate", async (interaction) => {
 			);
 			return;
 		}
-		let query = interaction.options.getString("query", true);
-		let resultsNumber =
-			interaction.options.getInteger("results", true) > 20
-				? 20
-				: interaction.options.getInteger("results", true) < 5
-				? 5
-				: interaction.options.getInteger("results", true);
-		let results = await searchSongs(query, resultsNumber);
-		let row = new MessageActionRow().addComponents(new MessageSelectMenu().setCustomId('song').setMinValues(1).setMaxValues(1).setPlaceholder("Sélectionnez la musique voulue...").addOptions(results.map(s => ({ value: s.id, label: `${s.title} | ${durationToTime(s.duration)}` }))));
-		const message = await interaction.reply({ components: [row], fetchReply: true }) as Message
-		const collector = message.createMessageComponentCollector<SelectMenuInteraction>({
-			componentType: "SELECT_MENU",
-			time: 60_000,
-		})
-		collector.on('collect', async (selected) => {
+		const query = interaction.options.getString("query", true);
+		const results = interaction.options.getInteger("results", false) ?? 10;
+		let resultsNumber = results > 20 ? 20 : results < 5 ? 5 : results;
+		let songs = await searchSongs(query, resultsNumber);
+		let row = new MessageActionRow().addComponents([
+			new MessageSelectMenu()
+				.setCustomId("song")
+				.setMinValues(1)
+				.setMaxValues(1)
+				.setPlaceholder("Sélectionnez la musique voulue...")
+				.addOptions(
+					songs.map((s) => ({
+						value: s.id,
+						label: `${s.title} | ${durationToTime(s.duration)}`,
+					})) as MessageSelectOptionData[]
+				),
+		]);
+		const message = (await interaction.reply({
+			content: "Résultat de la recherche :",
+			components: [row],
+			fetchReply: true,
+		})) as Message;
+		const collector =
+			message.createMessageComponentCollector<SelectMenuInteraction>({
+				componentType: "SELECT_MENU",
+				time: 60_000,
+			});
+		collector.on("collect", async (selected) => {
 			if (selected.user.id !== interaction.user.id) {
-				await selected.reply({ content: "Seul l'auteur de la commande peut choisir...", ephemeral: true })
+				await selected.reply({
+					content: "Seul l'auteur de la commande peut choisir...",
+					ephemeral: true,
+				});
 				return;
 			}
-			let { id, duration } = results.find(e => e.id === selected.values[0]);
+			let { id, duration } = songs.find(
+				(e) => e.id === selected.values[0]
+			);
 			let {
 				videoDetails: {
 					title,
@@ -490,6 +521,11 @@ client.on("interactionCreate", async (interaction) => {
 						)
 					)
 					.setFooter("Mise en ligne : " + publishDate, avatar);
+				await selected.update({
+					content: null,
+					components: [],
+					embeds: [videoEmbed],
+				});
 				client.queue
 					.get(interaction.guildId)
 					.queue.push({ id: id, duration: duration });
@@ -519,13 +555,13 @@ client.on("interactionCreate", async (interaction) => {
 					loop: false,
 					loopQueue: false,
 				});
+				await selected.update({content: null, components: [], embeds: [videoEmbed]})
 
 				client.emit("playUpdate", interaction.guildId);
 				registerPlayer(interaction.guildId);
 			}
-			collector.stop()
-		})
-		
+			collector.stop();
+		});
 	} else if (interaction.commandName === "skip") {
 		if (!getVoiceConnection(interaction.guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
