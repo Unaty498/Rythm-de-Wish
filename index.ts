@@ -406,7 +406,6 @@ client.on("interactionCreate", async (interaction) => {
 					thumbnails: [{ url: avatar }],
 					name,
 				},
-				publishDate,
 			},
 		} = await ytdl.getBasicInfo(id);
 		let videoEmbed: MessageEmbed;
@@ -439,7 +438,7 @@ client.on("interactionCreate", async (interaction) => {
 					"Position dans la queue :",
 					`**${client.queue.get(interaction.guildId).queue.length+1}**`
 				)
-				.setFooter("Mise en ligne : " + publishDate, avatar);
+				.setFooter("Made by Unaty498", avatar);
 			client.queue
 				.get(interaction.guildId)
 				.queue.push({ id: id, duration: duration });
@@ -453,7 +452,7 @@ client.on("interactionCreate", async (interaction) => {
 				.setThumbnail(`https://img.youtube.com/vi/${id}/hqdefault.jpg`)
 				.addField("Auteur", name, true)
 				.addField("Durée", durationToTime(duration), true)
-				.setFooter("Mise en ligne : " + publishDate, avatar);
+				.setFooter("Made by Unaty498", avatar);
 			client.queue.set(interaction.guildId, {
 				player: createAudioPlayer(),
 				playBegin: Math.floor(Date.now() / 1000),
@@ -486,7 +485,6 @@ client.on("interactionCreate", async (interaction) => {
 					thumbnails: [{ url: avatar }],
 					name,
 				},
-				publishDate,
 			},
 		} = await ytdl.getBasicInfo(id);
 
@@ -529,7 +527,7 @@ client.on("interactionCreate", async (interaction) => {
 					true
 				)
 				.addField("Position dans la queue :", `**${index}**`)
-				.setFooter("Mise en ligne : " + publishDate, avatar);
+				.setFooter("Made by Unaty498", avatar);
 		} else {
 			client.queue
 				.get(interaction.guildId)
@@ -555,7 +553,7 @@ client.on("interactionCreate", async (interaction) => {
 					true
 				)
 				.addField("Position dans la queue :", `**1**`)
-				.setFooter("Mise en ligne : " + publishDate, avatar);
+				.setFooter("Made by Unaty498", avatar);
 		}
 		await interaction.reply({ embeds: [videoEmbed] });
 	}
@@ -622,7 +620,7 @@ client.on("interactionCreate", async (interaction) => {
 						thumbnails: [{ url: avatar }],
 						name,
 					},
-					publishDate,
+					
 				},
 			} = await ytdl.getBasicInfo(id);
 			let videoEmbed: MessageEmbed;
@@ -662,7 +660,7 @@ client.on("interactionCreate", async (interaction) => {
 							client.queue.get(interaction.guildId).queue.length+1
 						}**`
 					)
-					.setFooter("Mise en ligne : " + publishDate, avatar);
+					.setFooter("Made by Unaty498", avatar);
 				client.queue
 					.get(interaction.guildId)
 					.queue.push({ id: id, duration: duration });
@@ -683,7 +681,7 @@ client.on("interactionCreate", async (interaction) => {
 					)
 					.addField("Auteur", name, true)
 					.addField("Durée", durationToTime(duration), true)
-					.setFooter("Mise en ligne : " + publishDate, avatar);
+					.setFooter("Made by Unaty498", avatar);
 				client.queue.set(interaction.guildId, {
 					player: createAudioPlayer(),
 					playBegin: Math.floor(Date.now() / 1000),
@@ -757,18 +755,13 @@ client.on("interactionCreate", async (interaction) => {
 							Math.floor(Date.now() / 1000) +
 							client.queue.get(interaction.guildId).playing
 								.duration
-				  )}\``
-				: `\`${i}\` | [${title
-						.replace("[", "\\[")
-						.replace(
-							"]",
-							"\\]"
-						)}](https://youtu.be/${id}}]) | \`${durationToTime(
+				  )}\`${queue.length > 1 ? "\n\n__Up Next__ :": ''}`
+				: `\`${i}\` | [${title}](https://youtu.be/${id}}]) | \`${durationToTime(
 						duration
-				  )}\``
+				  )}\`\n`
 		);
 		const getContent = (p: number) =>
-			pages.slice(p * 10, p * 10 + 10).join("\n\n");
+			pages.slice(p * 10, p * 10 + 10).join("\n");
 		const calcTotalPages = () => Math.ceil(pages.length / 10);
 		const queueEmbed = new MessageEmbed()
 			.setTitle("Queue :")
@@ -843,7 +836,7 @@ client.on("interactionCreate", async (interaction) => {
 						queueEmbed
 							.setDescription(
 								getContent(page) +
-									`\n\n**${
+									`\n**${
 										queue.length
 									} musique(s) dans la queue | Temps total : ${durationToTime(
 										client.queue.get(interaction.guildId)
