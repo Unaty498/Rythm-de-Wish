@@ -28,7 +28,7 @@ import axios from "axios";
 
 require("dotenv").config();
 const youtubeRegex =
-	/^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=([A-Za-z0-9-]{11})(?:&.+)?)|(?:youtu\.be\/([A-Za-z0-9-]{11})))$/;
+	/^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=([A-Za-z0-9-_]{11})(?:&.+)?)|(?:youtu\.be\/([A-Za-z0-9-_]{11})))$/;
 
 function resolveDuration(duration: string): number {
 	duration = duration.slice(2);
@@ -72,52 +72,55 @@ function durationToTime(duration: number): string {
 
 function resolveId(
 	query: string
-): Promise<{ id: string; title: string; duration: number }> {
-	return new Promise<{ id: string; title: string; duration: number }>(
-		async (resolve, reject) => {
-			let link: boolean = youtubeRegex.test(query);
-			let id: string;
-			if (!link) {
-				const res = await axios.get(
-					"https://www.googleapis.com/youtube/v3/search?" +
-						new URLSearchParams({
-							q: query,
-							maxResults: "1",
-							key: process.env.ytToken,
-							type: "video",
-							topicId: "/m/04rlf",
-							safeSearch: "strict",
-						})
-				);
-				id = res.data.items[0].id.videoId;
-			} else {
-				id = youtubeRegex.exec(query)[1] ?? youtubeRegex.exec(query)[2];
-			}
-			const {
-				data: {
-					items: [
-						{
-							contentDetails: { duration },
-							snippet: { title },
-						},
-					],
-				},
-			} = await axios.get(
-				"https://www.googleapis.com/youtube/v3/videos?" +
+): Promise<
+	{ id: string; title: string; duration: number }
+> {
+	return new Promise<
+		{ id: string; title: string; duration: number }
+	>(async (resolve, reject) => {
+		let link: boolean = youtubeRegex.test(query);
+		let id: string;
+
+		if (!link) {
+			const res = await axios.get(
+				"https://www.googleapis.com/youtube/v3/search?" +
 					new URLSearchParams({
-						part: "snippet,contentDetails",
-						id: id,
+						q: query,
+						maxResults: "1",
 						key: process.env.ytToken,
+						type: "video",
+						topicId: "/m/04rlf",
+						safeSearch: "strict",
 					})
 			);
-
-			resolve({
-				id: id,
-				title: title,
-				duration: resolveDuration(duration),
-			});
+			id = res.data.items[0].id.videoId;
+		} else {
+			id = youtubeRegex.exec(query)[1] ?? youtubeRegex.exec(query)[2];
 		}
-	);
+		const {
+			data: {
+				items: [
+					{
+						contentDetails: { duration },
+						snippet: { title },
+					},
+				],
+			},
+		} = await axios.get(
+			"https://www.googleapis.com/youtube/v3/videos?" +
+				new URLSearchParams({
+					part: "snippet,contentDetails",
+					id: id,
+					key: process.env.ytToken,
+				})
+		);
+
+		resolve({
+			id: id,
+			title: title,
+			duration: resolveDuration(duration),
+		});
+	});
 }
 
 function searchSongs(
@@ -399,7 +402,7 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		let query = interaction.options.getString("query", true);
-		let { id, title, duration } = await resolveId(query);
+		let { id, title, duration } = await resolveId(query)
 		let {
 			videoDetails: {
 				author: {
@@ -411,7 +414,6 @@ client.on("interactionCreate", async (interaction) => {
 		let videoEmbed: MessageEmbed;
 
 		if (client.queue.get(interaction.guildId).playing.id) {
-			
 			videoEmbed = new MessageEmbed()
 				.setAuthor(
 					"Ajouté à la queue",
@@ -436,7 +438,9 @@ client.on("interactionCreate", async (interaction) => {
 				)
 				.addField(
 					"Position dans la queue :",
-					`**${client.queue.get(interaction.guildId).queue.length+1}**`
+					`**${
+						client.queue.get(interaction.guildId).queue.length + 1
+					}**`
 				)
 				.setFooter("Made by Unaty498", avatar);
 			client.queue
@@ -476,9 +480,9 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		let index = interaction.options.getInteger("position", false) - 1;
-		const { id, title, duration } = await resolveId(
+		const { id, title, duration } = (await resolveId(
 			interaction.options.getString("query", true)
-		);
+		)) as { id: string; title: string; duration: number };
 		const {
 			videoDetails: {
 				author: {
@@ -594,10 +598,11 @@ client.on("interactionCreate", async (interaction) => {
 			components: rows,
 			fetchReply: true,
 		})) as Message;
-		const collector =
-			message.createMessageComponentCollector<SelectMenuInteraction|ButtonInteraction>({
-				time: 60_000,
-			});
+		const collector = message.createMessageComponentCollector<
+			SelectMenuInteraction | ButtonInteraction
+		>({
+			time: 60_000,
+		});
 		collector.on("collect", async (selected) => {
 			if (selected.user.id !== interaction.user.id) {
 				await selected.reply({
@@ -607,7 +612,7 @@ client.on("interactionCreate", async (interaction) => {
 				return;
 			}
 			if (selected.isButton()) {
-				await selected.update({ content: "Annulé", components: []});
+				await selected.update({ content: "Annulé", components: [] });
 				return;
 			}
 			let { id, duration } = songs.find(
@@ -620,13 +625,11 @@ client.on("interactionCreate", async (interaction) => {
 						thumbnails: [{ url: avatar }],
 						name,
 					},
-					
 				},
 			} = await ytdl.getBasicInfo(id);
 			let videoEmbed: MessageEmbed;
 
 			if (client.queue.get(interaction.guildId).playing.id) {
-				
 				videoEmbed = new MessageEmbed()
 					.setAuthor(
 						"Ajouté à la queue",
@@ -657,7 +660,8 @@ client.on("interactionCreate", async (interaction) => {
 					.addField(
 						"Position dans la queue :",
 						`**${
-							client.queue.get(interaction.guildId).queue.length+1
+							client.queue.get(interaction.guildId).queue.length +
+							1
 						}**`
 					)
 					.setFooter("Made by Unaty498", avatar);
@@ -755,7 +759,7 @@ client.on("interactionCreate", async (interaction) => {
 							Math.floor(Date.now() / 1000) +
 							client.queue.get(interaction.guildId).playing
 								.duration
-				  )}\`${queue.length > 1 ? "\n\n__Up Next__ :": ''}`
+				  )}\`${queue.length > 1 ? "\n\n__Up Next__ :" : ""}`
 				: `\`${i}\` | [${title}](https://youtu.be/${id}}]) | \`${durationToTime(
 						duration
 				  )}\`\n`
