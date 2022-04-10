@@ -4,24 +4,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc && node ."
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unaty498/Rythm-de-Wish.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@discordjs/builders": "^0.6.0",
-    "@discordjs/opus": "^0.5.3",
-    "@discordjs/voice": "^0.6.0",
-    "axios": "^0.21.4",
-    "discord.js": "^13.1.0",
-    "dotenv": "^10.0.0",
-    "ffmpeg-static": "^4.4.0",
-    "libsodium-wrappers": "^0.7.9",
-    "ytdl-core": "^4.9.1"
+  "bugs": {
+    "url": "https://github.com/Unaty498/Rythm-de-Wish/issues"
   },
-  "devDependencies": {
-    "typescript": "^4.4.3"
+  "homepage": "https://github.com/Unaty498/Rythm-de-Wish#readme",
+  "dependencies": {
+    "@discordjs/voice": "^0.8.0",
+    "discord.js": "^13.6.0",
+    "dotenv": "^16.0.0",
+    "play-dl": "^1.9.4"
   }
 }

@@ -22,30 +22,21 @@ import {
 	joinVoiceChannel,
 	AudioPlayer,
 } from "@discordjs/voice";
-import { URLSearchParams } from "url";
-import ytdl from "ytdl-core";
-import axios from "axios";
+
+import PlayDl, { YouTubeVideo } from "play-dl";
 
 require("dotenv").config();
-const youtubeRegex =
-	/^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=([A-Za-z0-9-_]{11})(?:&.+)?)|(?:youtu\.be\/([A-Za-z0-9-_]{11})))$/;
 
-function resolveDuration(duration: string): number {
-	duration = duration.slice(2);
-	let time: number = 0;
-	if (duration.split("H").length === 2) {
-		time += parseInt(duration.split("H")[0]) * 3600;
-		duration = duration.split("H")[1];
+interface Song {
+	id?: string;
+	duration?: number;
+	title?: string;
+	url?: string;
+	thumbnail?: string;
+	artist?: {
+		name?: string;
+		icon?: string;
 	}
-	if (duration.split("M").length === 2) {
-		time += parseInt(duration.split("M")[0]) * 60;
-		duration = duration.split("M")[1];
-	}
-	if (duration.split("S").length === 2) {
-		time += parseInt(duration.split("S")[0]);
-		duration = duration.split("S")[1];
-	}
-	return time;
 }
 
 function durationToTime(duration: number): string {
@@ -62,109 +53,12 @@ function durationToTime(duration: number): string {
 		duration < 0
 			? "00"
 			: (Math.floor(duration / 60) < 10
-					? "0" + Math.floor(duration / 60)
-					: Math.floor(duration / 60)) + ":";
+				? "0" + Math.floor(duration / 60)
+				: Math.floor(duration / 60)) + ":";
 	duration %= 60;
 
 	str += duration < 0 ? "00" : duration < 10 ? "0" + duration : duration;
 	return str;
-}
-
-function resolveId(
-	query: string
-): Promise<
-	{ id: string; title: string; duration: number }
-> {
-	return new Promise<
-		{ id: string; title: string; duration: number }
-	>(async (resolve, reject) => {
-		let link: boolean = youtubeRegex.test(query);
-		let id: string;
-
-		if (!link) {
-			const res = await axios.get(
-				"https://www.googleapis.com/youtube/v3/search?" +
-					new URLSearchParams({
-						q: query,
-						maxResults: "1",
-						key: process.env.ytToken,
-						type: "video",
-						topicId: "/m/04rlf",
-						safeSearch: "strict",
-					})
-			);
-			id = res.data.items[0].id.videoId;
-		} else {
-			id = youtubeRegex.exec(query)[1] ?? youtubeRegex.exec(query)[2];
-		}
-		const {
-			data: {
-				items: [
-					{
-						contentDetails: { duration },
-						snippet: { title },
-					},
-				],
-			},
-		} = await axios.get(
-			"https://www.googleapis.com/youtube/v3/videos?" +
-				new URLSearchParams({
-					part: "snippet,contentDetails",
-					id: id,
-					key: process.env.ytToken,
-				})
-		);
-
-		resolve({
-			id: id,
-			title: title,
-			duration: resolveDuration(duration),
-		});
-	});
-}
-
-function searchSongs(
-	query: string,
-	results: number
-): Promise<{ id: string; title: string; duration: number }[]> {
-	return new Promise<{ id: string; title: string; duration: number }[]>(
-		async (resolve, reject) => {
-			let videoIds = await axios.get(
-				"https://www.googleapis.com/youtube/v3/search?" +
-					new URLSearchParams({
-						q: query,
-						maxResults: results.toString(),
-						key: process.env.ytToken,
-						type: "video",
-						topicId: "/m/04rlf",
-						safeSearch: "strict",
-					})
-			);
-			let ids = (
-				videoIds.data.items as { id: { videoId: string } }[]
-			).map((e) => e.id.videoId);
-
-			let videoInfos = await axios.get(
-				"https://www.googleapis.com/youtube/v3/videos?" +
-					new URLSearchParams({
-						part: "snippet,contentDetails",
-						id: ids.join(","),
-						key: process.env.ytToken,
-					})
-			);
-			let array = (
-				videoInfos.data.items as {
-					contentDetails: { duration: string };
-					snippet: { title: string };
-				}[]
-			).map((e, i) => ({
-				id: ids[i],
-				title: e.snippet.title,
-				duration: resolveDuration(e.contentDetails.duration),
-			}));
-			resolve(array);
-		}
-	);
 }
 
 function registerPlayer(guildId: string): void {
@@ -211,8 +105,8 @@ class Rythm extends Discord.Client {
 			loopQueue?: boolean;
 			player?: AudioPlayer;
 			playBegin?: number;
-			playing: { id?: string; duration?: number };
-			queue: { id: string; duration: number }[];
+			playing: Song;
+			queue: Song[];
 		}
 	>;
 	constructor(options: Discord.ClientOptions) {
@@ -229,19 +123,10 @@ const client = new Rythm({
 	],
 });
 
-client.queue = new Collection();
-
 client.once("ready", () => {
 	console.log(`Logged in as ${client.user.tag} !`);
 
 	client.guilds.cache
-		.filter(({ id }) =>
-			[
-				"497754200940347403",
-				"691073500127035443",
-				"671408861168533533",
-			].includes(id)
-		)
 		.forEach((guild) => {
 			guild.commands.set([
 				{
@@ -252,6 +137,7 @@ client.once("ready", () => {
 							name: "salon",
 							description: "Le salon à rejoindre",
 							type: "CHANNEL",
+							channelTypes: ["GUILD_VOICE", "GUILD_STAGE_VOICE"],
 							required: false,
 						},
 					],
@@ -283,6 +169,8 @@ client.once("ready", () => {
 							name: "results",
 							description: "Le nombre de résultats à afficher",
 							type: "INTEGER",
+							minValue: 1,
+							maxValue: 25,
 							required: false,
 						},
 					],
@@ -342,6 +230,35 @@ client.once("ready", () => {
 						},
 					],
 				},
+				{
+					name: "shuffle",
+					description: "Mélange la queue",
+				},
+				{
+					name: "pause",
+					description: "Met en pause la musique",
+				},
+				{
+					name: "resume",
+					description: "Reprend la musique",
+				},
+				{
+					name: "now-playing",
+					description: "Affiche la musique en cours",
+				},
+				{
+					name: "seek",
+					description: "Joue la musique au moment donné",
+					options: [
+						{
+							name: "position",
+							description: "Position de la musique",
+							type: "STRING",
+
+							required: true,
+						},
+					],
+				}
 			]);
 		});
 });
@@ -402,65 +319,72 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		let query = interaction.options.getString("query", true);
-		let { id, title, duration } = await resolveId(query)
-		let {
-			videoDetails: {
-				author: {
-					thumbnails: [{ url: avatar }],
-					name,
-				},
-			},
-		} = await ytdl.getBasicInfo(id);
-		let videoEmbed: MessageEmbed;
+		let infos: YouTubeVideo;
+		if (PlayDl.yt_validate(query)) {
+			infos = (await PlayDl.video_basic_info(query)).video_details;
+		} else {
+			infos = (await PlayDl.search(query, { language: "fr", limit: 1 }))[0];
+		}
+
+
+		const videoEmbed = new MessageEmbed()
+			.setDescription(`**[${infos.title}](${infos.url})**`)
+			.setThumbnail(infos.thumbnails[0].url)
+			.setAuthor({
+				name: "Ajouté à la queue",
+				iconURL: interaction.user.avatarURL({ format: "png" })
+			})
+			.addField("Auteur", infos.music?.[0].artist ?? infos.channel.name, true)
+			.addField("Durée", durationToTime(infos.durationInSec), true)
+			.setFooter({ text: "Made by Unaty498", iconURL: infos.channel.icons[0].url });
 
 		if (client.queue.get(interaction.guildId).playing.id) {
-			videoEmbed = new MessageEmbed()
-				.setAuthor(
-					"Ajouté à la queue",
-					interaction.user.avatarURL({ format: "png" })
-				)
-				.setDescription(`**[${title}](https://youtu.be/${id})**`)
-				.setThumbnail(`https://img.youtube.com/vi/${id}/hqdefault.jpg`)
-				.addField("Auteur", name, true)
-				.addField("Durée", durationToTime(duration), true)
+			videoEmbed
 				.addField(
 					"Temps avant de le jouer",
 					durationToTime(
 						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing
-								.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.reduce((p, c) => p + c.duration, 0) || 0)
+						Math.floor(Date.now() / 1000) +
+						client.queue.get(interaction.guildId).playing
+							.duration +
+						(client.queue
+							.get(interaction.guildId)
+							.queue.reduce((p, c) => p + c.duration, 0) || 0)
 					),
 					true
 				)
 				.addField(
 					"Position dans la queue :",
-					`**${
-						client.queue.get(interaction.guildId).queue.length + 1
+					`**${client.queue.get(interaction.guildId).queue.length + 1
 					}**`
 				)
-				.setFooter("Made by Unaty498", avatar);
 			client.queue
 				.get(interaction.guildId)
-				.queue.push({ id: id, duration: duration });
+				.queue.push({
+					id: infos.id,
+					duration: infos.durationInSec,
+					artist: {
+						name: infos.music?.[0].artist ?? infos.channel.name,
+						icon: infos.channel.icons[0].url
+					},
+					title: infos.title,
+					url: infos.url,
+					thumbnail: infos.thumbnails[0].url
+				});
 		} else {
-			videoEmbed = new MessageEmbed()
-				.setAuthor(
-					"Ajouté à la queue",
-					interaction.user.avatarURL({ format: "png" })
-				)
-				.setDescription(`**[${title}](https://youtu.be/${id})**`)
-				.setThumbnail(`https://img.youtube.com/vi/${id}/hqdefault.jpg`)
-				.addField("Auteur", name, true)
-				.addField("Durée", durationToTime(duration), true)
-				.setFooter("Made by Unaty498", avatar);
 			client.queue.set(interaction.guildId, {
 				player: createAudioPlayer(),
 				playBegin: Math.floor(Date.now() / 1000),
-				playing: { id: id, duration: duration },
+				playing: {
+					id: infos.id,
+					duration: infos.durationInSec,
+					artist: {
+						name: infos.music?.[0].artist ?? infos.channel.name,
+						icon: infos.channel.icons[0].url
+					},
+					title: infos.title,
+					url: infos.url,
+					thumbnail: infos.thumbnails[0].url },
 				queue: [],
 				loop: false,
 				loopQueue: false,
@@ -520,13 +444,13 @@ client.on("interactionCreate", async (interaction) => {
 					"Temps avant de le jouer",
 					durationToTime(
 						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing
-								.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.slice(0, index)
-								.reduce((p, c) => p + c.duration, 0) || 0)
+						Math.floor(Date.now() / 1000) +
+						client.queue.get(interaction.guildId).playing
+							.duration +
+						(client.queue
+							.get(interaction.guildId)
+							.queue.slice(0, index)
+							.reduce((p, c) => p + c.duration, 0) || 0)
 					),
 					true
 				)
@@ -550,9 +474,9 @@ client.on("interactionCreate", async (interaction) => {
 					"Temps avant de le jouer",
 					durationToTime(
 						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing
-								.duration
+						Math.floor(Date.now() / 1000) +
+						client.queue.get(interaction.guildId).playing
+							.duration
 					),
 					true
 				)
@@ -645,23 +569,22 @@ client.on("interactionCreate", async (interaction) => {
 						"Temps avant de le jouer",
 						durationToTime(
 							client.queue.get(interaction.guildId).playBegin -
-								Math.floor(Date.now() / 1000) +
-								client.queue.get(interaction.guildId).playing
-									.duration +
-								(client.queue
-									.get(interaction.guildId)
-									.queue.reduce(
-										(p, c) => p + c.duration,
-										0
-									) || 0)
+							Math.floor(Date.now() / 1000) +
+							client.queue.get(interaction.guildId).playing
+								.duration +
+							(client.queue
+								.get(interaction.guildId)
+								.queue.reduce(
+									(p, c) => p + c.duration,
+									0
+								) || 0)
 						),
 						true
 					)
 					.addField(
 						"Position dans la queue :",
-						`**${
-							client.queue.get(interaction.guildId).queue.length +
-							1
+						`**${client.queue.get(interaction.guildId).queue.length +
+						1
 						}**`
 					)
 					.setFooter("Made by Unaty498", avatar);
@@ -740,11 +663,11 @@ client.on("interactionCreate", async (interaction) => {
 		];
 		const res = await axios.get(
 			"https://www.googleapis.com/youtube/v3/videos?" +
-				new URLSearchParams({
-					part: "snippet",
-					id: ids.join(","),
-					key: process.env.ytToken,
-				})
+			new URLSearchParams({
+				part: "snippet",
+				id: ids.join(","),
+				key: process.env.ytToken,
+			})
 		);
 		const queue = res.data.items.map((item, i) => [
 			ids[i],
@@ -755,14 +678,14 @@ client.on("interactionCreate", async (interaction) => {
 		let pages = queue.map(([id, title, duration], i) =>
 			i === 0
 				? `__Now playing__ :\n [${title}](https://youtu.be/${id}}]) | \`${durationToTime(
-						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing
-								.duration
-				  )}\`${queue.length > 1 ? "\n\n__Up Next__ :" : ""}`
+					client.queue.get(interaction.guildId).playBegin -
+					Math.floor(Date.now() / 1000) +
+					client.queue.get(interaction.guildId).playing
+						.duration
+				)}\`${queue.length > 1 ? "\n\n__Up Next__ :" : ""}`
 				: `\`${i}\` | [${title}](https://youtu.be/${id}}]) | \`${durationToTime(
-						duration
-				  )}\`\n`
+					duration
+				)}\`\n`
 		);
 		const getContent = (p: number) =>
 			pages.slice(p * 10, p * 10 + 10).join("\n");
@@ -771,25 +694,22 @@ client.on("interactionCreate", async (interaction) => {
 			.setTitle("Queue :")
 			.setDescription(
 				getContent(page) +
-					`\n\n**${
-						queue.length
-					} musique(s) dans la queue | Temps total : ${durationToTime(
-						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing
-								.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.reduce((p, c) => p + c.duration, 0) || 0)
-					)}**`
+				`\n\n**${queue.length
+				} musique(s) dans la queue | Temps total : ${durationToTime(
+					client.queue.get(interaction.guildId).playBegin -
+					Math.floor(Date.now() / 1000) +
+					client.queue.get(interaction.guildId).playing
+						.duration +
+					(client.queue
+						.get(interaction.guildId)
+						.queue.reduce((p, c) => p + c.duration, 0) || 0)
+				)}**`
 			)
 			.setFooter(
-				`Page ${page + 1}/${calcTotalPages()} | Loop: ${
-					client.queue.get(interaction.guildId).loop ? "✅" : "❌"
-				} | Queue Loop: ${
-					client.queue.get(interaction.guildId).loopQueue
-						? "✅"
-						: "❌"
+				`Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(interaction.guildId).loop ? "✅" : "❌"
+				} | Queue Loop: ${client.queue.get(interaction.guildId).loopQueue
+					? "✅"
+					: "❌"
 				}`,
 				interaction.user.avatarURL({ format: "png" })
 			);
@@ -840,33 +760,30 @@ client.on("interactionCreate", async (interaction) => {
 						queueEmbed
 							.setDescription(
 								getContent(page) +
-									`\n**${
-										queue.length
-									} musique(s) dans la queue | Temps total : ${durationToTime(
-										client.queue.get(interaction.guildId)
-											.playBegin -
-											Math.floor(Date.now() / 1000) +
-											client.queue.get(
-												interaction.guildId
-											).playing.duration +
-											(client.queue
-												.get(interaction.guildId)
-												.queue.reduce(
-													(p, c) => p + c.duration,
-													0
-												) || 0)
-									)}**`
+								`\n**${queue.length
+								} musique(s) dans la queue | Temps total : ${durationToTime(
+									client.queue.get(interaction.guildId)
+										.playBegin -
+									Math.floor(Date.now() / 1000) +
+									client.queue.get(
+										interaction.guildId
+									).playing.duration +
+									(client.queue
+										.get(interaction.guildId)
+										.queue.reduce(
+											(p, c) => p + c.duration,
+											0
+										) || 0)
+								)}**`
 							)
 							.setFooter(
-								`Page ${page + 1}/${calcTotalPages()} | Loop: ${
-									client.queue.get(interaction.guildId).loop
-										? "✅"
-										: "❌"
-								} | Queue Loop: ${
-									client.queue.get(interaction.guildId)
-										.loopQueue
-										? "✅"
-										: "❌"
+								`Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(interaction.guildId).loop
+									? "✅"
+									: "❌"
+								} | Queue Loop: ${client.queue.get(interaction.guildId)
+									.loopQueue
+									? "✅"
+									: "❌"
 								}`,
 								interaction.user.avatarURL({ format: "png" })
 							),
@@ -891,8 +808,7 @@ client.on("interactionCreate", async (interaction) => {
 			interaction.guildId
 		).loop;
 		await interaction.reply(
-			`:repeat: Loop ${
-				!client.queue.get(interaction.guildId).loop ? "dés" : ""
+			`:repeat: Loop ${!client.queue.get(interaction.guildId).loop ? "dés" : ""
 			}activée !`
 		);
 	}
@@ -909,8 +825,7 @@ client.on("interactionCreate", async (interaction) => {
 			interaction.guildId
 		).loopQueue;
 		await interaction.reply(
-			`:repeat: Loop ${
-				!client.queue.get(interaction.guildId).loopQueue ? "dés" : ""
+			`:repeat: Loop ${!client.queue.get(interaction.guildId).loopQueue ? "dés" : ""
 			}activée !`
 		);
 	}
@@ -956,11 +871,11 @@ client.on("interactionCreate", async (interaction) => {
 				},
 			} = await axios.get(
 				"https://www.googleapis.com/youtube/v3/videos?" +
-					new URLSearchParams({
-						part: "snippet",
-						id: song.id,
-						key: process.env.ytToken,
-					})
+				new URLSearchParams({
+					part: "snippet",
+					id: song.id,
+					key: process.env.ytToken,
+				})
 			);
 			client.queue.get(interaction.guildId).queue.splice(index, 1);
 			await interaction.reply(`Enlevé le morceau : \`${title}\``);
