@@ -859,7 +859,3 @@ process.on("SIGTERM", () => {
 	getVoiceConnections().forEach((c) => c.destroy());
 	process.exit(0);
 });
-process.on("SIGKILL", () => {
-	getVoiceConnections().forEach((c) => c.destroy());
-	process.exit(0);
-});
