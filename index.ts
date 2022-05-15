@@ -1,5 +1,4 @@
 import Discord, {
-	ButtonInteraction,
 	Collection,
 	GuildChannel,
 	GuildMember,
@@ -9,13 +8,11 @@ import Discord, {
 	MessageEmbed,
 	MessageSelectMenu,
 	MessageSelectOptionData,
-	SelectMenuInteraction,
 	Snowflake,
 	User,
 } from "discord.js";
 import {
 	AudioPlayerStatus,
-	StreamType,
 	createAudioPlayer,
 	createAudioResource,
 	getVoiceConnection,
