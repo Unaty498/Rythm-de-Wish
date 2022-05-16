@@ -1,5 +1,6 @@
 import Discord, {
 	Collection,
+	CommandInteractionOptionResolver,
 	GuildChannel,
 	GuildMember,
 	Message,
@@ -821,6 +822,69 @@ client.on("interactionCreate", async (interaction) => {
 		} else {
 			await interaction.reply("Aucune musique n'est à cette position !");
 		}
+	} else if (interaction.commandName === "shuffle") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal !");
+			return;
+		}
+		if (!client.queue.get(interaction.guildId).playing.id) {
+			await interaction.reply("Aucun morceau n'est joué !");
+			return;
+		}
+		if (client.queue.get(interaction.guildId).queue.length === 0) {
+			await interaction.reply("La queue est vide !");
+			return;
+		}
+		client.queue.get(interaction.guildId).queue = client.queue.get(interaction.guildId).queue.sort(() => Math.random() - 0.5);
+		await interaction.reply("🔀 Queue mélangée !");
+	} else if (interaction.commandName === "pause") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal !");
+			return;
+		}
+		if (!client.queue.get(interaction.guildId).playing.id) {
+			await interaction.reply("Aucun morceau n'est joué !");
+			return;
+		}
+		if (client.queue.get(interaction.guildId).player.pause()) {
+			await interaction.reply("⏸ Musique en pause !");
+		} else {
+			await interaction.reply("⏯ Musique déjà en pause !");
+		}
+	} else if (interaction.commandName === "resume") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal !");
+			return;
+		}
+		if (!client.queue.get(interaction.guildId).playing.id) {
+			await interaction.reply("Aucun morceau n'est joué !");
+			return;
+		}
+		if (client.queue.get(interaction.guildId).player.unpause()) {
+			await interaction.reply("▶ Musique reprise !");
+		} else {
+			await interaction.reply("▶ Musique déjà en cours !");
+		}
+	} else if (interaction.commandName === "now-playing") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal !");
+			return;
+		}
+		if (!client.queue.get(interaction.guildId).playing.id) {
+			await interaction.reply("Aucun morceau n'est joué !");
+			return;
+		}
+		const song = client.queue.get(interaction.guildId).playing;
+		const string = `${"▬".repeat(Math.floor((Date.now() - client.queue.get(interaction.guildId).playBegin) / (song.duration * 1000) * 10))}🔘${"▬".repeat(10 - Math.floor((Date.now() - client.queue.get(interaction.guildId).playBegin) / (song.duration * 1000) * 10))}`;
+		const embed = new Discord.MessageEmbed()
+			.setAuthor({
+				name: "Now Playing ♪",
+				iconURL: client.user.avatarURL()
+			})
+			.setColor(0x2F3136)
+			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\``)
+			.setThumbnail(song.thumbnail)
+		await interaction.reply({ embeds: [embed] });
 	}
 });
 
