@@ -875,7 +875,8 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		const song = client.queue.get(interaction.guildId).playing;
-		const string = `${"▬".repeat(Math.floor((Date.now() - client.queue.get(interaction.guildId).playBegin) / (song.duration * 1000) * 10))}🔘${"▬".repeat(10 - Math.floor((Date.now() - client.queue.get(interaction.guildId).playBegin) / (song.duration * 1000) * 10))}`;
+		const state = Math.floor(Math.floor((Date.now() - client.queue.get(interaction.guildId).playBegin) / 1000) / song.duration) * 15;
+		const string = `${"▬".repeat(state)}🔘${"▬".repeat(15 - state)}`;
 		const embed = new Discord.MessageEmbed()
 			.setAuthor({
 				name: "Now Playing ♪",
