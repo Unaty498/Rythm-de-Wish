@@ -56,7 +56,7 @@ function getSong(query: string): Promise<Song> {
 	return new Promise((resolve, reject) => {
 		if (query.startsWith('https://') && PlayDl.yt_validate(query) === 'video') {
 			PlayDl.video_basic_info(query).then(({ video_details: res }) => {
-				
+
 				resolve(formatSong(res));
 				return;
 			});
@@ -103,27 +103,23 @@ function generateEmbed(song: Song, user: User): MessageEmbed {
 			text: "Made by Unaty498",
 			iconURL: song.artist.icon
 		});
-}	
+}
+
+function addLeadingZero(num: number): string {
+	return num < 10 ? "0" + num : num.toString();
+}
 
 function durationToTime(duration: number): string {
 	let str: string = "";
 	if (Math.floor(duration / 3600) > 0) {
-		str +=
-			(Math.floor(duration / 3600) < 10
-				? "0" + Math.floor(duration / 3600)
-				: Math.floor(duration / 3600)) + ":";
+		str += addLeadingZero(Math.floor(duration / 3600)) + ":";
 		duration %= 3600;
 	}
 
-	str +=
-		duration < 0
-			? "00"
-			: (Math.floor(duration / 60) < 10
-				? "0" + Math.floor(duration / 60)
-				: Math.floor(duration / 60)) + ":";
+	str += duration < 0 ? "00" : addLeadingZero(Math.floor(duration / 60)) + ":";
 	duration %= 60;
 
-	str += duration < 0 ? "00" : duration < 10 ? "0" + duration : duration;
+	str += duration < 0 ? "00" : addLeadingZero(duration);
 	return str;
 }
 
@@ -533,7 +529,7 @@ client.on("interactionCreate", async (interaction) => {
 			components: rows,
 			fetchReply: true,
 		})) as Message;
-		
+
 		const collector = message.createMessageComponentCollector({
 			time: 60_000,
 		});
@@ -764,7 +760,7 @@ client.on("interactionCreate", async (interaction) => {
 			interaction.guildId
 		).loop;
 		await interaction.reply(
-			`:repeat: Loop ${!client.queue.get(interaction.guildId).loop ? "dés" : ""
+			`🔁 Loop ${!client.queue.get(interaction.guildId).loop ? "dés" : ""
 			}activée !`
 		);
 	}
@@ -781,7 +777,7 @@ client.on("interactionCreate", async (interaction) => {
 			interaction.guildId
 		).loopQueue;
 		await interaction.reply(
-			`:repeat: Loop ${!client.queue.get(interaction.guildId).loopQueue ? "dés" : ""
+			`🔁 Loop ${!client.queue.get(interaction.guildId).loopQueue ? "dés" : ""
 			}activée !`
 		);
 	}
@@ -875,15 +871,15 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		const song = client.queue.get(interaction.guildId).playing;
-		const state = Math.floor(Math.floor((Date.now() - client.queue.get(interaction.guildId).playBegin) / 1000) / song.duration) * 15;
-		const string = `${"▬".repeat(state)}🔘${"▬".repeat(15 - state)}`;
+		const state = Math.floor((Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin) / song.duration * 30);
+		const string = `${"▬".repeat(state)}🔘${"▬".repeat(29 - state)}`;
 		const embed = new Discord.MessageEmbed()
 			.setAuthor({
 				name: "Now Playing ♪",
 				iconURL: client.user.avatarURL()
 			})
 			.setColor(0x2F3136)
-			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\``)
+			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n\`${durationToTime(Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin)}/${durationToTime(song.duration)}\``)
 			.setThumbnail(song.thumbnail)
 		await interaction.reply({ embeds: [embed] });
 	}
