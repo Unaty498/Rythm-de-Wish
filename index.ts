@@ -728,17 +728,17 @@ client.on("interactionCreate", async (interaction) => {
 										) || 0)
 								)}**`
 							)
-							.setFooter(
-								`Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(interaction.guildId).loop
+							.setFooter({
+								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(interaction.guildId).loop
 									? "✅"
 									: "❌"
-								} | Queue Loop: ${client.queue.get(interaction.guildId)
-									.loopQueue
-									? "✅"
-									: "❌"
-								}`,
-								interaction.user.avatarURL({ format: "png" })
-							),
+									} | Queue Loop: ${client.queue.get(interaction.guildId)
+										.loopQueue
+										? "✅"
+										: "❌"
+									}`,
+								iconURL: interaction.user.avatarURL({ format: "png" })
+							}),
 					],
 					components: [row],
 				});
