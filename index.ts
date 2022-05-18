@@ -513,7 +513,7 @@ client.on("interactionCreate", async (interaction) => {
 					.addOptions(
 						songs.map((s) => ({
 							value: s.id,
-							label: `${s.title} | ${durationToTime(s.duration)}`,
+							label: `${s.title.slice(0, 100 - durationToTime(s.duration).length - 3)} | ${durationToTime(s.duration)}`,
 						})) as MessageSelectOptionData[]
 					),
 			]),
