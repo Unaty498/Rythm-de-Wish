@@ -39,6 +39,8 @@ interface Song {
 }
 
 function formatSong(song: YouTubeVideo): Song {
+	let artist = song.music?.[0]?.artist;
+	
 	return {
 		id: song.id,
 		duration: song.durationInSec,
@@ -46,7 +48,7 @@ function formatSong(song: YouTubeVideo): Song {
 		url: song.url,
 		thumbnail: song.thumbnails[0].url,
 		artist: {
-			name: song.music?.[0]?.artist ?? song.channel.name,
+			name: artist ? (typeof artist === "string" ? artist : artist.text) : song.channel.name,
 			icon: song.channel.icons[0].url
 		}
 	}
