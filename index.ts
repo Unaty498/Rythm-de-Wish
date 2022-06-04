@@ -36,6 +36,10 @@ interface Song {
 		name?: string;
 		icon?: string;
 	}
+	chapters?: {
+		title?: string;
+		seconds?: number;
+	}[];
 }
 
 function formatSong(song: YouTubeVideo): Song {
@@ -50,7 +54,8 @@ function formatSong(song: YouTubeVideo): Song {
 		artist: {
 			name: artist ? (typeof artist === "string" ? artist : artist.text) : song.channel.name,
 			icon: song.channel.icons[0].url
-		}
+		},
+		chapters: song.chapters.map(({ title, seconds }) => ({ title, seconds }))
 	}
 }
 
@@ -355,7 +360,6 @@ client.on("interactionCreate", async (interaction) => {
 			joinVoiceChannel({
 				channelId: channel.id,
 				guildId: interaction.guild.id,
-				// @ts-expect-error
 				adapterCreator: interaction.guild.voiceAdapterCreator,
 			});
 
@@ -873,6 +877,8 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		const song = client.queue.get(interaction.guildId).playing;
+		const seconds = Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin;
+		const chapter = song.chapters.find((chapter, index, array) => chapter.seconds <= seconds && (index === array.length - 1 || array[index + 1].seconds > seconds));
 		const state = Math.floor((Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin) / song.duration * 30);
 		const string = `${"▬".repeat(state)}🔘${"▬".repeat(29 - state)}`;
 		const embed = new Discord.MessageEmbed()
@@ -881,7 +887,7 @@ client.on("interactionCreate", async (interaction) => {
 				iconURL: client.user.avatarURL()
 			})
 			.setColor(0x2F3136)
-			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n\`${durationToTime(Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin)}/${durationToTime(song.duration)}\``)
+			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n\`${durationToTime(seconds)}/${durationToTime(song.duration)}\`\n${chapter ? `Chapitre : \`${chapter.title}\`` : ""}`)
 			.setThumbnail(song.thumbnail)
 		await interaction.reply({ embeds: [embed] });
 	}

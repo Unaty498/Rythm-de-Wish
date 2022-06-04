@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/Unaty498/Rythm-de-Wish#readme",
   "dependencies": {
-    "@discordjs/voice": "^0.8.0",
+    "@discordjs/voice": "^0.10.0",
     "discord.js": "^13.7.0",
     "dotenv": "^16.0.0",
     "libsodium-wrappers": "^0.7.10",
