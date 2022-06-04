@@ -887,7 +887,7 @@ client.on("interactionCreate", async (interaction) => {
 				iconURL: client.user.avatarURL()
 			})
 			.setColor(0x2F3136)
-			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n\`${durationToTime(seconds)}/${durationToTime(song.duration)}\`\n${chapter ? `Chapitre : \`${chapter.title}\`` : ""}`)
+			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n${chapter ? `Chapitre : \`${chapter.title}\`\n` : ""}\`${durationToTime(seconds)}/${durationToTime(song.duration)}\``)
 			.setThumbnail(song.thumbnail)
 		await interaction.reply({ embeds: [embed] });
 	}
