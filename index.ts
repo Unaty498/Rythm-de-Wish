@@ -324,9 +324,9 @@ client.once("ready", () => {
 					options: [
 						{
 							name: "position",
-							description: "Position de la musique",
-							type: "STRING",
-
+							description: "Position de la musique en secondes",
+							type: "INTEGER",
+							minValue: 0,
 							required: true,
 						},
 					],
@@ -911,6 +911,30 @@ client.on("interactionCreate", async (interaction) => {
 			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n${chapter ? `Chapitre : \`${chapter.title}\`\n` : ""}\`${durationToTime(seconds)}/${durationToTime(song.duration)}\``)
 			.setThumbnail(song.thumbnail)
 		await interaction.reply({ embeds: [embed] });
+	} else if (interaction.commandName === "seek") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal !");
+			return;
+		}
+		if (!client.queue.get(interaction.guildId).playing.id) {
+			await interaction.reply("Aucun morceau n'est joué !");
+			return;
+		}
+		const seconds = interaction.options.getInteger("position", true);
+		if (seconds > client.queue.get(interaction.guildId).playing.duration) {
+			await interaction.reply("La durée doit être inférieure à " + client.queue.get(interaction.guildId).playing.duration + " secondes !");
+			return;
+		}
+		const stream = await PlayDl.stream(client.queue.get(interaction.guildId).playing.id, { seek: seconds });
+		const resource = createAudioResource(
+			stream.stream,
+			{
+				inputType: stream.type,
+			}
+		);
+		client.queue.get(interaction.guildId).player.play(resource);
+		client.queue.get(interaction.guildId).playBegin = Math.floor(Date.now() / 1000) - seconds;
+		await interaction.reply("⏯ Positionné à `" + durationToTime(seconds) + "` !");
 	}
 });
 
