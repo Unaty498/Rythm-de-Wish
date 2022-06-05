@@ -45,12 +45,13 @@ interface Song {
 }
 
 function formatSong(song: YouTubeVideo): Song {
+	let songTitle = song.music?.[0]?.song;
 	let artist = song.music?.[0]?.artist;
 	
 	return {
 		id: song.id,
 		duration: song.durationInSec,
-		title: song.title,
+		title: songTitle ? (typeof songTitle === "string" ? songTitle : songTitle.text) : song.title,
 		url: song.url,
 		thumbnail: song.thumbnails[0].url,
 		artist: {
