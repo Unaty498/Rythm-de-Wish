@@ -1,8 +1,10 @@
-import Discord, {
+import {
+	Client,
+	ClientOptions,
 	Collection,
-	CommandInteractionOptionResolver,
 	GuildChannel,
 	GuildMember,
+	Intents,
 	Message,
 	MessageActionRow,
 	MessageButton,
@@ -166,7 +168,7 @@ function registerPlayer(guildId: string): void {
 	});
 }
 
-class Rythm extends Discord.Client {
+class Rythm extends Client {
 	queue: Collection<
 		Snowflake,
 		{
@@ -178,7 +180,7 @@ class Rythm extends Discord.Client {
 			queue: Song[];
 		}
 	>;
-	constructor(options: Discord.ClientOptions) {
+	constructor(options: ClientOptions) {
 		super(options);
 		this.queue = new Collection();
 	}
@@ -186,9 +188,9 @@ class Rythm extends Discord.Client {
 
 const client = new Rythm({
 	intents: [
-		Discord.Intents.FLAGS.GUILDS,
-		Discord.Intents.FLAGS.GUILD_VOICE_STATES,
-		Discord.Intents.FLAGS.GUILD_MEMBERS,
+		Intents.FLAGS.GUILDS,
+		Intents.FLAGS.GUILD_VOICE_STATES,
+		Intents.FLAGS.GUILD_MEMBERS,
 	],
 });
 
@@ -385,10 +387,20 @@ client.on("interactionCreate", async (interaction) => {
 	}
 	if (interaction.commandName === "play") {
 		if (!getVoiceConnection(interaction.guildId)) {
-			await interaction.reply(
-				"Je dois être dans un salon vocal pour jouer de la musique !"
-			);
-			return;
+			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoice() && interaction.channel.joinable) ? interaction.channel : null;
+			if (channel) {
+				joinVoiceChannel({
+					channelId: channel.id,
+					guildId: interaction.guild.id,
+					adapterCreator: interaction.guild.voiceAdapterCreator,
+				});
+			} else {
+				await interaction.reply({
+					content: "Vous n'êtes pas dans un salon vocal !",
+					ephemeral: true,
+				});
+				return;
+			}
 		}
 		let query = interaction.options.getString("query", true);
 		const song: Song = await getSong(query);
@@ -884,7 +896,7 @@ client.on("interactionCreate", async (interaction) => {
 		const chapter = song.chapters.find((chapter, index, array) => chapter.seconds <= seconds && (index === array.length - 1 || array[index + 1].seconds > seconds));
 		const state = Math.floor((Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin) / song.duration * 30);
 		const string = `${"▬".repeat(state)}🔘${"▬".repeat(29 - state)}`;
-		const embed = new Discord.MessageEmbed()
+		const embed = new MessageEmbed()
 			.setAuthor({
 				name: "Now Playing ♪",
 				iconURL: client.user.avatarURL()
