@@ -386,6 +386,11 @@ client.on("interactionCreate", async (interaction) => {
 		}
 	}
 	if (interaction.commandName === "play") {
+		if (!client.queue.get(interaction.guildId))
+			client.queue.set(interaction.guildId, {
+				playing: {},
+				queue: [],
+			});
 		if (!getVoiceConnection(interaction.guildId)) {
 			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoice() && interaction.channel.joinable) ? interaction.channel : null;
 			if (channel) {
