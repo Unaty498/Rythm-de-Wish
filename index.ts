@@ -352,7 +352,7 @@ client.on("interactionCreate", async (interaction) => {
 		if (!channel)
 			channel = interaction.channel.isVoice() ? interaction.channel : null;
 
-		if (!channel || !channel.isVoice() || (channel.isVoice() && !channel.joinable)) {
+		if (!channel || !channel.isVoice() || !channel.joinable) {
 			await interaction.reply({
 				content:
 					"Vous n'êtes pas dans un salon vocal ou le salon précisé n'est pas un salon vocal !",
