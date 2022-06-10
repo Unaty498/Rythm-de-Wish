@@ -24,7 +24,6 @@ import {
 	AudioPlayer,
 } from "@discordjs/voice";
 
-import Genius from "genius-lyrics";
 
 import PlayDl, { YouTubeVideo } from "play-dl";
 import dotenv from "dotenv";
@@ -40,6 +39,7 @@ interface Song {
 		name?: string;
 		icon?: string;
 	}
+	//isSong?: boolean;
 	chapters?: {
 		title?: string;
 		seconds?: number;
@@ -60,7 +60,8 @@ function formatSong(song: YouTubeVideo): Song {
 			name: artist ? (typeof artist === "string" ? artist : artist.text) : song.channel.name,
 			icon: song.channel.icons[0].url
 		},
-		chapters: song.chapters.map(({ title, seconds }) => ({ title, seconds }))
+		chapters: song.chapters.map(({ title, seconds }) => ({ title, seconds })),
+		//isSong: song.music.length > 0
 	}
 }
 
@@ -183,12 +184,10 @@ class Rythm extends Client {
 			queue: Song[];
 		}
 		>;
-	genius: Genius.Client;
 	
 	constructor(options: ClientOptions) {
 		super(options);
 		this.queue = new Collection();
-		this.genius = new Genius.Client(process.env.GENIUS_TOKEN);
 	}
 }
 
@@ -335,11 +334,11 @@ client.once("ready", () => {
 							required: true,
 						},
 					],
-				},
+				}/*,
 				{
 					name: "lyrics",
 					description: "Affiche les paroles de la musique",
-				}
+				}*/
 			]);
 		});
 });
@@ -944,37 +943,6 @@ client.on("interactionCreate", async (interaction) => {
 		client.queue.get(interaction.guildId).player.play(resource);
 		client.queue.get(interaction.guildId).playBegin = Math.floor(Date.now() / 1000) - seconds;
 		await interaction.reply("⏯ Positionné à `" + durationToTime(seconds) + "` !");
-	} else if (interaction.commandName === "lyrics") {
-		if (!getVoiceConnection(interaction.guildId)) {
-			await interaction.reply("Je dois être dans un salon vocal !");
-			return;
-		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
-			await interaction.reply("Aucun morceau n'est joué !");
-			return;
-		}
-		await interaction.deferReply();
-		const searches = await client.genius.songs.search(client.queue.get(interaction.guildId).playing.title);
-		if (searches.length === 0) {
-			await interaction.editReply("Aucun résultat pour la recherche !");
-			return;
-		}
-		const song = searches[0];
-		let lyrics = await song.lyrics();
-
-		const embeds: MessageEmbed[] = [];
-
-		while (lyrics.length > 4096 && embeds.length < 10) {
-			embeds.push(new MessageEmbed()
-				.setDescription(lyrics.substring(0, 4096)))
-			lyrics = lyrics.substring(4096);
-		}
-		embeds.push(new MessageEmbed()
-			.setDescription(lyrics));
-		
-		embeds[0].setTitle(`Paroles de ${song.title}`);
-		
-		await interaction.editReply({ embeds: embeds });
 	}
 });
 
