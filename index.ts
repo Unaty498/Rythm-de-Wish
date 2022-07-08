@@ -14,6 +14,7 @@ import {
 	Snowflake,
 	User,
 } from "discord.js";
+
 import {
 	AudioPlayerStatus,
 	createAudioPlayer,
@@ -24,8 +25,7 @@ import {
 	AudioPlayer,
 } from "@discordjs/voice";
 
-
-import PlayDl, { YouTubeVideo } from "play-dl";
+import PlayDl, { YouTubePlayList, YouTubeVideo } from "play-dl";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -39,11 +39,41 @@ interface Song {
 		name?: string;
 		icon?: string;
 	}
-	//isSong?: boolean;
 	chapters?: {
 		title?: string;
 		seconds?: number;
 	}[];
+}
+
+interface Playlist {
+	title?: string;
+	songs?: Song[];
+	url?: string;
+	thumbnail?: string;
+	duration?: number;
+	artist?: {
+		name?: string;
+		icon?: string;
+	}
+}
+
+function getPlaylist(url: string): Promise<Playlist> {
+	return new Promise((resolve, reject) => {
+		PlayDl.playlist_info(url).then(async (res: YouTubePlayList) => {
+			const songs = (await res.all_videos()).map(formatSong)
+			resolve({
+				title: res.title,
+				songs: songs,
+				url: res.url,
+				thumbnail: res.thumbnail.url,
+				duration: songs.reduce((acc, song) => acc + song.duration, 0),
+				artist: {
+					name: res.channel.name,
+					icon: res.channel.icons[0].url
+				}
+			});
+		});
+	});
 }
 
 function formatSong(song: YouTubeVideo): Song {
@@ -60,8 +90,7 @@ function formatSong(song: YouTubeVideo): Song {
 			name: artist ? (typeof artist === "string" ? artist : artist.text) : song.channel.name,
 			icon: song.channel.icons[0].url
 		},
-		chapters: song.chapters.map(({ title, seconds }) => ({ title, seconds })),
-		//isSong: song.music.length > 0
+		chapters: song.chapters.map(({ title, seconds }) => ({ title, seconds }))
 	}
 }
 
@@ -69,7 +98,6 @@ function getSong(query: string): Promise<Song> {
 	return new Promise((resolve, reject) => {
 		if (query.startsWith('https://') && PlayDl.yt_validate(query) === 'video') {
 			PlayDl.video_basic_info(query).then(({ video_details: res }) => {
-
 				resolve(formatSong(res));
 				return;
 			});
@@ -115,6 +143,25 @@ function generateEmbed(song: Song, user: User): MessageEmbed {
 		.setFooter({
 			text: "Made by Unaty498",
 			iconURL: song.artist.icon
+		});
+}
+
+function generatePlaylistEmbed(playlist: Playlist, user: User): MessageEmbed {
+	return new MessageEmbed()
+		.setAuthor(
+			{
+				name: "Ajouté à la queue",
+				iconURL: user.avatarURL({ format: "png" })
+			}
+		)
+		.setDescription(`**[${playlist.title}](${playlist.url})**`)
+		.setThumbnail(playlist.thumbnail)
+		.addField("Auteur", playlist.artist.name, true)
+		.addField("Durée", durationToTime(playlist.duration), true)
+		.addField("Songs", `${playlist.songs.length}`, true)
+		.setFooter({
+			text: "Made by Unaty498",
+			iconURL: playlist.artist.icon
 		});
 }
 
@@ -334,11 +381,7 @@ client.once("ready", () => {
 							required: true,
 						},
 					],
-				}/*,
-				{
-					name: "lyrics",
-					description: "Affiche les paroles de la musique",
-				}*/
+				}
 			]);
 		});
 });
@@ -417,49 +460,98 @@ client.on("interactionCreate", async (interaction) => {
 			}
 		}
 		let query = interaction.options.getString("query", true);
-		const song: Song = await getSong(query);
 
+		if (query.match(/^https?:\/\//) && PlayDl.yt_validate(query) === "playlist") {
+			const playlist = await getPlaylist(query);
 
-		const videoEmbed = generateEmbed(song, interaction.user);
+			const embed = generatePlaylistEmbed(playlist, interaction.user);
 
-		if (client.queue.get(interaction.guildId).playing.id) {
-			videoEmbed
-				.addField(
-					"Temps avant de le jouer",
-					durationToTime(
-						client.queue.get(interaction.guildId).playBegin -
-						Math.floor(Date.now() / 1000) +
-						client.queue.get(interaction.guildId).playing
-							.duration +
-						(client.queue
-							.get(interaction.guildId)
-							.queue.reduce((p, c) => p + c.duration, 0) || 0)
-					),
-					true
-				)
-				.addField(
-					"Position dans la queue :",
-					`**${client.queue.get(interaction.guildId).queue.length + 1
-					}**`
-				)
-			client.queue
-				.get(interaction.guildId)
-				.queue.push(song);
+			if (client.queue.get(interaction.guildId).playing.id) {
+				embed
+					.addField(
+						"Temps avant de le jouer",
+						durationToTime(
+							client.queue.get(interaction.guildId).playBegin -
+							Math.floor(Date.now() / 1000) +
+							client.queue.get(interaction.guildId).playing
+								.duration +
+							(client.queue
+								.get(interaction.guildId)
+								.queue.reduce((p, c) => p + c.duration, 0) || 0)
+						),
+						true
+					)
+					.addField(
+						"Position dans la queue :",
+						`**${client.queue.get(interaction.guildId).queue.length + 1
+						}-${client.queue.get(interaction.guildId).queue.length + playlist.songs.length + 1}**`
+					)
+				client.queue
+					.get(interaction.guildId)
+					.queue = client.queue.get(interaction.guildId).queue.concat(playlist.songs);
+			} else {
+				const song = playlist.songs.slice(0, 1)[0];
+				client.queue.set(interaction.guildId, {
+					player: createAudioPlayer(),
+					playBegin: Math.floor(Date.now() / 1000),
+					playing: song,
+					queue: playlist.songs,
+					loop: false,
+					loopQueue: false,
+				});
+
+				client.emit("playUpdate", interaction.guildId);
+				registerPlayer(interaction.guildId);
+			}
+
+			await interaction.reply({ embeds: [embed] });
+
 		} else {
-			client.queue.set(interaction.guildId, {
-				player: createAudioPlayer(),
-				playBegin: Math.floor(Date.now() / 1000),
-				playing: song,
-				queue: [],
-				loop: false,
-				loopQueue: false,
-			});
 
-			client.emit("playUpdate", interaction.guildId);
-			registerPlayer(interaction.guildId);
+			const song: Song = await getSong(query);
+
+
+			const videoEmbed = generateEmbed(song, interaction.user);
+
+			if (client.queue.get(interaction.guildId).playing.id) {
+				videoEmbed
+					.addField(
+						"Temps avant de le jouer",
+						durationToTime(
+							client.queue.get(interaction.guildId).playBegin -
+							Math.floor(Date.now() / 1000) +
+							client.queue.get(interaction.guildId).playing
+								.duration +
+							(client.queue
+								.get(interaction.guildId)
+								.queue.reduce((p, c) => p + c.duration, 0) || 0)
+						),
+						true
+					)
+					.addField(
+						"Position dans la queue :",
+						`**${client.queue.get(interaction.guildId).queue.length + 1
+						}**`
+					)
+				client.queue
+					.get(interaction.guildId)
+					.queue.push(song);
+			} else {
+				client.queue.set(interaction.guildId, {
+					player: createAudioPlayer(),
+					playBegin: Math.floor(Date.now() / 1000),
+					playing: song,
+					queue: [],
+					loop: false,
+					loopQueue: false,
+				});
+
+				client.emit("playUpdate", interaction.guildId);
+				registerPlayer(interaction.guildId);
+			}
+
+			await interaction.reply({ embeds: [videoEmbed] });
 		}
-
-		await interaction.reply({ embeds: [videoEmbed] });
 	}
 	if (interaction.commandName === "insert") {
 		if (!getVoiceConnection(interaction.guildId)) {
