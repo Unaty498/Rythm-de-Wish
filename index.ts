@@ -59,7 +59,7 @@ interface Playlist {
 
 function getPlaylist(url: string): Promise<Playlist> {
 	return new Promise((resolve, reject) => {
-		PlayDl.playlist_info(url).then(async (res: YouTubePlayList) => {
+		PlayDl.playlist_info(url, { incomplete: true }).then(async (res: YouTubePlayList) => {
 			const songs = (await res.all_videos()).map(formatSong)
 			resolve({
 				title: res.title,
@@ -79,7 +79,7 @@ function getPlaylist(url: string): Promise<Playlist> {
 function formatSong(song: YouTubeVideo): Song {
 	let songTitle = song.music?.[0]?.song;
 	let artist = song.music?.[0]?.artist;
-	
+
 	return {
 		id: song.id,
 		duration: song.durationInSec,
@@ -230,8 +230,8 @@ class Rythm extends Client {
 			playing: Song;
 			queue: Song[];
 		}
-		>;
-	
+	>;
+
 	constructor(options: ClientOptions) {
 		super(options);
 		this.queue = new Collection();
@@ -402,7 +402,7 @@ client.on("interactionCreate", async (interaction) => {
 
 		if (!channel)
 			channel = (interaction.member as GuildMember).voice?.channel;
-		
+
 		if (!channel)
 			channel = interaction.channel.isVoice() ? interaction.channel : null;
 
