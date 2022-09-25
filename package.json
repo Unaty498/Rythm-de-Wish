@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-	"start": "node index.js",
-	"postinstall": "npm run build"
+    "start": "node index.js",
+    "postinstall": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -24,6 +24,7 @@
     "discord.js": "^14.4.0",
     "dotenv": "^16.0.2",
     "libsodium-wrappers": "^0.7.10",
-    "play-dl": "^1.9.5"
+    "play-dl": "^1.9.5",
+    "typescript": "^4.8.3"
   }
 }
