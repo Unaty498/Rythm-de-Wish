@@ -955,8 +955,8 @@ process.on("SIGTERM", () => {
 });
 
 const server = https.createServer((req, res) => {
-	res.writeHead(200);
-	res.end("ok");
+	res.writeHead(200, "OK", { "Content-Type": "text/plain" });
+	res.end("Hi !");
 });
 
 server.listen(process.env.PORT || 8080);
