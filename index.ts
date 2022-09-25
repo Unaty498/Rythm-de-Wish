@@ -955,11 +955,8 @@ process.on("SIGTERM", () => {
 });
 
 const server = https.createServer((req, res) => {
-	res.writeHead(200, "OK", { "Content-Type": "text/plain" });
-	res.end("Hi !");
-});
-
-server.listen(process.env.PORT || 8080);
+	res.writeHead(200, "OK", { "Content-Type": "text/plain" }).end("Hi !");
+}).listen(process.env.PORT || 8080);
 
 setInterval(() => {
 	https.get(`https://rythm-de-wish.herokuapp.com/`, (res) => {
