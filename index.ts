@@ -965,7 +965,7 @@ app.listen(process.env.PORT || 3000, () => {
 
 import hsp from "heroku-self-ping";
 
-hsp(`https://${process.env.HEROKU_APP_NAME}.herokuapp.com`, {
+hsp(`https://rythm-de-wish.herokuapp.com/`, {
 	logger(arg) {
 		console.log(arg);
 	},
