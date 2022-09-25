@@ -718,7 +718,10 @@ client.on("interactionCreate", async (interaction) => {
 				iconURL: interaction.user.avatarURL({ extension: "png" }),
 			});
 		if (calcTotalPages() > 1) {
-			const row = new ActionRowBuilder<ButtonBuilder>().addComponents([new ButtonBuilder().setCustomId("-").setStyle(ButtonStyle.Primary).setEmoji("◀️").setDisabled(true), new ButtonBuilder().setCustomId("+").setStyle(ButtonStyle.Primary).setEmoji("▶️")]);
+			const row = new ActionRowBuilder<ButtonBuilder>().addComponents([
+				new ButtonBuilder().setCustomId("-").setStyle(ButtonStyle.Primary).setEmoji("◀️").setDisabled(true),
+				new ButtonBuilder().setCustomId("+").setStyle(ButtonStyle.Primary).setEmoji("▶️"),
+			]);
 			const message = (await interaction.reply({
 				embeds: [queueEmbed],
 				components: [row],
@@ -956,4 +959,4 @@ const server = http.createServer((req, res) => {
 	res.end();
 });
 
-server.listen(5000);
+server.listen(process.env.PORT || 8080);
