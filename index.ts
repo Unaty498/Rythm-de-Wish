@@ -18,7 +18,8 @@ import {
 	ComponentType,
 } from "discord.js";
 
-import https from "https";
+import axios from "axios";
+import express from "express";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
 
@@ -954,14 +955,16 @@ process.on("SIGTERM", () => {
 	process.exit(0);
 });
 
-const server = https.createServer((req, res) => {
-	res.writeHead(200, "OK", { "Content-Type": "text/plain" }).end("Hi !");
-}).listen(process.env.PORT || 8080);
+const app = express();
+app.get("/", (req, res) => {
+	res.send("Hello World!");
+});
 
-setInterval(() => {
-	https.get(`https://rythm-de-wish.herokuapp.com/`, (res) => {
-		if(res.statusCode.toString().startsWith("2")) {
-			console.log("Pong !");
-		}
-	})
-}, 15000);
+app.listen(process.env.PORT || 3000, () => {
+	console.log("Server started");
+});
+
+setInterval(async () => {
+	const res = await axios.get(`https://rythm-de-wish.herokuapp.com:${process.env.PORT || 3000}/`);
+	console.log(res.data);
+}, 5000);
