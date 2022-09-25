@@ -18,7 +18,6 @@ import {
 	ComponentType,
 } from "discord.js";
 
-import axios from "axios";
 import express from "express";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
@@ -964,7 +963,11 @@ app.listen(process.env.PORT || 3000, () => {
 	console.log("Server started");
 });
 
-setInterval(async () => {
-	const res = await axios.get(`https://rythm-de-wish.herokuapp.com:${process.env.PORT || 3000}/`);
-	console.log(res.data);
-}, 5000);
+import hsp from "heroku-self-ping";
+
+hsp(`https://${process.env.HEROKU_APP_NAME}.herokuapp.com`, {
+	logger(arg) {
+		console.log(arg);
+	},
+	interval: 2 * 60 * 1000,
+});

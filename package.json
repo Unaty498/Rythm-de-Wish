@@ -21,10 +21,10 @@
   "dependencies": {
     "@discordjs/voice": "^0.11.0",
     "@types/express": "^4.17.14",
-    "axios": "^0.27.2",
     "discord.js": "^14.4.0",
     "dotenv": "^16.0.2",
     "express": "^4.18.1",
+    "heroku-self-ping": "^2.0.1",
     "libsodium-wrappers": "^0.7.10",
     "play-dl": "^1.9.5",
     "typescript": "^4.8.3"
