@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node index.js",
-    "postinstall": "npm run build"
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
