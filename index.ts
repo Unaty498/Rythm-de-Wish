@@ -955,8 +955,16 @@ process.on("SIGTERM", () => {
 });
 
 const server = http.createServer((req, res) => {
-	res.writeHead(204);
-	res.end();
+	res.writeHead(200);
+	res.end("ok");
 });
 
 server.listen(process.env.PORT || 8080);
+
+setInterval(() => {
+	http.get(`https://rythm-de-wish.herokuapp.com/`, (res) => {
+		if(res.statusCode.toString().startsWith("2")) {
+			console.log("Pong !");
+		}
+	})
+}, 15000);
