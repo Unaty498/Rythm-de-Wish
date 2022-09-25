@@ -18,7 +18,7 @@ import {
 	ComponentType,
 } from "discord.js";
 
-import http from "http";
+import https from "https";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
 
@@ -954,7 +954,7 @@ process.on("SIGTERM", () => {
 	process.exit(0);
 });
 
-const server = http.createServer((req, res) => {
+const server = https.createServer((req, res) => {
 	res.writeHead(200);
 	res.end("ok");
 });
@@ -962,7 +962,7 @@ const server = http.createServer((req, res) => {
 server.listen(process.env.PORT || 8080);
 
 setInterval(() => {
-	http.get(`https://rythm-de-wish.herokuapp.com/`, (res) => {
+	https.get(`https://rythm-de-wish.herokuapp.com/`, (res) => {
 		if(res.statusCode.toString().startsWith("2")) {
 			console.log("Pong !");
 		}
