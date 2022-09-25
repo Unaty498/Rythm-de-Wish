@@ -18,6 +18,8 @@ import {
 	ComponentType,
 } from "discord.js";
 
+import http from "http";
+
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
 
 import PlayDl, { YouTubePlayList, YouTubeVideo } from "play-dl";
@@ -948,3 +950,10 @@ process.on("SIGTERM", () => {
 	getVoiceConnections().forEach((c) => c.destroy());
 	process.exit(0);
 });
+
+const server = http.createServer((req, res) => {
+	res.writeHead(204);
+	res.end();
+});
+
+server.listen(5000);
