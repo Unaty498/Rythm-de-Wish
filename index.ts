@@ -962,12 +962,3 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
 	console.log("Server started");
 });
-
-import hsp from "heroku-self-ping";
-
-hsp(`https://rythm-de-wish.herokuapp.com/`, {
-	logger(arg) {
-		console.log(arg);
-	},
-	interval: 2 * 60 * 1000,
-});
