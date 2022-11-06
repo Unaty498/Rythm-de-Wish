@@ -16,9 +16,8 @@ import {
 	ChannelType,
 	ButtonStyle,
 	ComponentType,
+	SelectMenuComponent,
 } from "discord.js";
-
-import express from "express";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
 
@@ -609,7 +608,7 @@ client.on("interactionCreate", async (interaction) => {
 			fetchReply: true,
 		})) as Message;
 
-		const collector = message.createMessageComponentCollector({
+		const collector = message.createMessageComponentCollector<ComponentType.StringSelect | ComponentType.Button>({
 			time: 60_000,
 		});
 		collector.on("collect", async (selected) => {
@@ -952,13 +951,4 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
 	getVoiceConnections().forEach((c) => c.destroy());
 	process.exit(0);
-});
-
-const app = express();
-app.get("/", (req, res) => {
-	res.send("Hello World!");
-});
-
-app.listen(process.env.PORT || 3000, () => {
-	console.log("Server started");
 });
