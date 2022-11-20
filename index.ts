@@ -16,7 +16,6 @@ import {
 	ChannelType,
 	ButtonStyle,
 	ComponentType,
-	SelectMenuComponent,
 } from "discord.js";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
@@ -380,15 +379,17 @@ client.on("interactionCreate", async (interaction) => {
 				playing: {},
 				queue: [],
 			});
-		let channel = interaction.options.getChannel("salon", false) as GuildChannel;
+		let channel = interaction.options.getChannel("salon", false) as GuildChannel ?? (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() ? interaction.channel : null);
 
-		if (!channel) channel = (interaction.member as GuildMember).voice?.channel;
-
-		if (!channel) channel = interaction.channel.isVoiceBased() ? interaction.channel : null;
-
-		if (!channel || !channel.isVoiceBased() || !channel.joinable) {
+		if (!channel || !channel.isVoiceBased()) {
 			await interaction.reply({
 				content: "Vous n'êtes pas dans un salon vocal ou le salon précisé n'est pas un salon vocal !",
+				ephemeral: true,
+			});
+			return;
+		} else if (!channel.joinable) {
+			await interaction.reply({
+				content: "Je ne peux pas rejoindre ce salon !",
 				ephemeral: true,
 			});
 			return;
