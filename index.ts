@@ -408,6 +408,7 @@ client.on("interactionCreate", async (interaction) => {
 		const connection = getVoiceConnection(interaction.guildId);
 
 		if (connection) {
+			client.queue.delete(interaction.guildId);
 			connection.destroy();
 			await interaction.reply("Disconnected.");
 		} else {
@@ -441,7 +442,7 @@ client.on("interactionCreate", async (interaction) => {
 		}
 		let query = interaction.options.getString("query", true);
 
-		if (query.match(/^https?:\/\//) && PlayDl.yt_validate(query) === "playlist") {
+		if (query.match(/^https?:\/\//g) && PlayDl.yt_validate(query) === "playlist") {
 			const playlist = await getPlaylist(query);
 
 			const embed = generatePlaylistEmbed(playlist, interaction.user);
