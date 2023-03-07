@@ -8,7 +8,6 @@ import {
 	Message,
 	ActionRowBuilder,
 	ButtonBuilder,
-	SelectMenuBuilder,
 	Snowflake,
 	User,
 	EmbedBuilder,
@@ -16,6 +15,7 @@ import {
 	ChannelType,
 	ButtonStyle,
 	ComponentType,
+	StringSelectMenuBuilder,
 } from "discord.js";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
@@ -427,10 +427,22 @@ client.on("interactionCreate", async (interaction) => {
 		if (!getVoiceConnection(interaction.guildId)) {
 			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null;
 			if (channel) {
-				joinVoiceChannel({
+				const connexion = joinVoiceChannel({
 					channelId: channel.id,
 					guildId: interaction.guild.id,
 					adapterCreator: interaction.guild.voiceAdapterCreator,
+				});
+				connexion.on("stateChange", (oldState, newState) => {
+					const oldNetworking = Reflect.get(oldState, "networking");
+					const newNetworking = Reflect.get(newState, "networking");
+
+					const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+						const newUdp = Reflect.get(newNetworkState, "udp");
+						clearInterval(newUdp?.keepAliveInterval);
+					};
+
+					oldNetworking?.off("stateChange", networkStateChangeHandler);
+					newNetworking?.on("stateChange", networkStateChangeHandler);
 				});
 			} else {
 				await interaction.reply({
@@ -589,8 +601,8 @@ client.on("interactionCreate", async (interaction) => {
 		let resultsNumber = results > 20 ? 20 : results < 5 ? 5 : results;
 		let songs = await searchSongs(query, resultsNumber);
 		let rows = [
-			new ActionRowBuilder<SelectMenuBuilder>().addComponents([
-				new SelectMenuBuilder()
+			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents([
+				new StringSelectMenuBuilder()
 					.setCustomId("song")
 					.setMinValues(1)
 					.setMaxValues(1)
@@ -624,7 +636,7 @@ client.on("interactionCreate", async (interaction) => {
 			if (selected.isButton()) {
 				await selected.update({ content: "Annulé", components: [] });
 				return;
-			} else if (selected.isSelectMenu()) {
+			} else if (selected.isStringSelectMenu()) {
 				const song = songs.find((e) => e.id === selected.values[0]);
 				const videoEmbed = generateEmbed(song, interaction.user);
 
