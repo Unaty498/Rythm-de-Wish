@@ -18,7 +18,7 @@ import {
 	StringSelectMenuBuilder,
 } from "discord.js";
 
-import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer } from "@discordjs/voice";
+import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
 
 import PlayDl, { YouTubePlayList, YouTubeVideo } from "play-dl";
 import dotenv from "dotenv";
@@ -54,20 +54,24 @@ interface Playlist {
 
 function getPlaylist(url: string): Promise<Playlist> {
 	return new Promise((resolve, reject) => {
-		PlayDl.playlist_info(url, { incomplete: true }).then(async (res: YouTubePlayList) => {
-			const songs = (await res.all_videos()).map(formatSong);
-			resolve({
-				title: res.title,
-				songs: songs,
-				url: res.url,
-				thumbnail: res.thumbnail.url,
-				duration: songs.reduce((acc, song) => acc + song.duration, 0),
-				artist: {
-					name: res.channel.name,
-					icon: res.channel.icons[0].url,
-				},
+		try {
+			PlayDl.playlist_info(url, { incomplete: true }).then(async (res: YouTubePlayList) => {
+				const songs = (await res.all_videos()).map(formatSong);
+				resolve({
+					title: res.title,
+					songs: songs,
+					url: res.url,
+					thumbnail: res.thumbnail.url,
+					duration: songs.reduce((acc, song) => acc + song.duration, 0),
+					artist: {
+						name: res.channel.name,
+						icon: res.channel.icons[0].url,
+					},
+				});
 			});
-		});
+		} catch (err) {
+			reject("Couldn't find/get the playlist.");
+		}
 	});
 }
 
@@ -91,35 +95,43 @@ function formatSong(song: YouTubeVideo): Song {
 
 function getSong(query: string): Promise<Song> {
 	return new Promise((resolve, reject) => {
-		if (query.startsWith("https://") && PlayDl.yt_validate(query) === "video") {
-			PlayDl.video_basic_info(query).then(({ video_details: res }) => {
-				resolve(formatSong(res));
-				return;
-			});
-		}
-		PlayDl.search(query, {
-			source: {
-				youtube: "video",
-			},
-			limit: 1,
-		}).then((results: YouTubeVideo[]) => {
-			if (results.length > 0) {
-				resolve(formatSong(results[0]));
+		try {
+			if (query.startsWith("https://") && PlayDl.yt_validate(query) === "video") {
+				PlayDl.video_basic_info(query).then(({ video_details: res }) => {
+					resolve(formatSong(res));
+					return;
+				});
 			}
-		});
+			PlayDl.search(query, {
+				source: {
+					youtube: "video",
+				},
+				limit: 1,
+			}).then((results: YouTubeVideo[]) => {
+				if (results.length > 0) {
+					resolve(formatSong(results[0]));
+				}
+			});
+		} catch (err) {
+			reject("Couldn't find/get the video.");
+		}
 	});
 }
 
 function searchSongs(query: string, limit: number): Promise<Song[]> {
 	return new Promise((resolve, reject) => {
-		PlayDl.search(query, {
-			source: {
-				youtube: "video",
-			},
-			limit,
-		}).then((results: YouTubeVideo[]) => {
-			resolve(results.map(formatSong));
-		});
+		try {
+			PlayDl.search(query, {
+				source: {
+					youtube: "video",
+				},
+				limit,
+			}).then((results: YouTubeVideo[]) => {
+				resolve(results.map(formatSong));
+			});
+		} catch (err) {
+			reject("Couldn't search for the video.");
+		}
 	});
 }
 
@@ -159,6 +171,14 @@ function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 			iconURL: playlist.artist.icon,
 		});
 }
+
+function generateErrorEmbed(error: string): EmbedBuilder {
+	return new EmbedBuilder()
+		.setColor(0xFF0000)
+		.setTitle("The bot encountered an error")
+		.setDescription(error);
+}
+	
 
 function addLeadingZero(num: number): string {
 	return num < 10 ? "0" + num : num.toString();
@@ -379,7 +399,7 @@ client.on("interactionCreate", async (interaction) => {
 				playing: {},
 				queue: [],
 			});
-		let channel = interaction.options.getChannel("salon", false) as GuildChannel ?? (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() ? interaction.channel : null);
+		let channel = (interaction.options.getChannel("salon", false) as GuildChannel) ?? (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() ? interaction.channel : null);
 
 		if (!channel || !channel.isVoiceBased()) {
 			await interaction.reply({
@@ -394,22 +414,10 @@ client.on("interactionCreate", async (interaction) => {
 			});
 			return;
 		} else {
-			const connexion = joinVoiceChannel({
+			joinVoiceChannel({
 				channelId: channel.id,
-				guildId: interaction.guild.id,
+				guildId: interaction.guildId,
 				adapterCreator: interaction.guild.voiceAdapterCreator,
-			});
-			connexion.on("stateChange", (oldState, newState) => {
-				const oldNetworking = Reflect.get(oldState, "networking");
-				const newNetworking = Reflect.get(newState, "networking");
-
-				const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-					const newUdp = Reflect.get(newNetworkState, "udp");
-					clearInterval(newUdp?.keepAliveInterval);
-				};
-
-				oldNetworking?.off("stateChange", networkStateChangeHandler);
-				newNetworking?.on("stateChange", networkStateChangeHandler);
 			});
 
 			await interaction.reply("✅ - Joined " + channel.name);
@@ -439,22 +447,10 @@ client.on("interactionCreate", async (interaction) => {
 		if (!getVoiceConnection(interaction.guildId)) {
 			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null;
 			if (channel) {
-				const connexion = joinVoiceChannel({
+				joinVoiceChannel({
 					channelId: channel.id,
 					guildId: interaction.guild.id,
 					adapterCreator: interaction.guild.voiceAdapterCreator,
-				});
-				connexion.on("stateChange", (oldState, newState) => {
-					const oldNetworking = Reflect.get(oldState, "networking");
-					const newNetworking = Reflect.get(newState, "networking");
-
-					const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-						const newUdp = Reflect.get(newNetworkState, "udp");
-						clearInterval(newUdp?.keepAliveInterval);
-					};
-
-					oldNetworking?.off("stateChange", networkStateChangeHandler);
-					newNetworking?.on("stateChange", networkStateChangeHandler);
 				});
 			} else {
 				await interaction.reply({
@@ -467,189 +463,53 @@ client.on("interactionCreate", async (interaction) => {
 		let query = interaction.options.getString("query", true);
 
 		if (query.match(/^https?:\/\//g) && PlayDl.yt_validate(query) === "playlist") {
-			const playlist = await getPlaylist(query);
+			try {
+				const playlist = await getPlaylist(query);
 
-			const embed = generatePlaylistEmbed(playlist, interaction.user);
+				const embed = generatePlaylistEmbed(playlist, interaction.user);
 
-			if (client.queue.get(interaction.guildId).playing.id) {
-				embed.addFields([
-					{
-						name: "Temps avant de le jouer",
-						value: durationToTime(
-							client.queue.get(interaction.guildId).playBegin -
+				if (client.queue.get(interaction.guildId).playing.id) {
+					embed.addFields([
+						{
+							name: "Temps avant de le jouer",
+							value: durationToTime(
+								client.queue.get(interaction.guildId).playBegin -
 								Math.floor(Date.now() / 1000) +
 								client.queue.get(interaction.guildId).playing.duration +
 								(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
-						),
-						inline: true,
-					},
-					{
-						name: "Position dans la queue :",
-						value: `**${client.queue.get(interaction.guildId).queue.length + 1}-${client.queue.get(interaction.guildId).queue.length + playlist.songs.length + 1}**`,
-					},
-				]);
-				client.queue.get(interaction.guildId).queue = client.queue.get(interaction.guildId).queue.concat(playlist.songs);
-			} else {
-				const song = playlist.songs.slice(0, 1)[0];
-				client.queue.set(interaction.guildId, {
-					player: createAudioPlayer(),
-					playBegin: Math.floor(Date.now() / 1000),
-					playing: song,
-					queue: playlist.songs,
-					loop: false,
-					loopQueue: false,
-				});
+							),
+							inline: true,
+						},
+						{
+							name: "Position dans la queue :",
+							value: `**${client.queue.get(interaction.guildId).queue.length + 1}-${client.queue.get(interaction.guildId).queue.length + playlist.songs.length + 1}**`,
+						},
+					]);
+					client.queue.get(interaction.guildId).queue = client.queue.get(interaction.guildId).queue.concat(playlist.songs);
+				} else {
+					const song = playlist.songs.slice(0, 1)[0];
+					client.queue.set(interaction.guildId, {
+						player: createAudioPlayer(),
+						playBegin: Math.floor(Date.now() / 1000),
+						playing: song,
+						queue: playlist.songs,
+						loop: false,
+						loopQueue: false,
+					});
 
-				client.emit("playUpdate", interaction.guildId);
-				registerPlayer(interaction.guildId);
+					client.emit("playUpdate", interaction.guildId);
+					registerPlayer(interaction.guildId);
+				}
+				await interaction.reply({ embeds: [embed] });
+			} catch (e) {
+				await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
 			}
 
-			await interaction.reply({ embeds: [embed] });
+			
 		} else {
-			const song: Song = await getSong(query);
+			try {
+				const song: Song = await getSong(query);
 
-			const videoEmbed = generateEmbed(song, interaction.user);
-
-			if (client.queue.get(interaction.guildId).playing.id) {
-				videoEmbed.addFields([
-					{
-						name: "Temps avant de le jouer",
-						value: durationToTime(
-							client.queue.get(interaction.guildId).playBegin -
-								Math.floor(Date.now() / 1000) +
-								client.queue.get(interaction.guildId).playing.duration +
-								(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
-						),
-						inline: true,
-					},
-					{
-						name: "Position dans la queue :",
-						value: `**${client.queue.get(interaction.guildId).queue.length + 1}**`,
-					},
-				]);
-				client.queue.get(interaction.guildId).queue.push(song);
-			} else {
-				client.queue.set(interaction.guildId, {
-					player: createAudioPlayer(),
-					playBegin: Math.floor(Date.now() / 1000),
-					playing: song,
-					queue: [],
-					loop: false,
-					loopQueue: false,
-				});
-
-				client.emit("playUpdate", interaction.guildId);
-				registerPlayer(interaction.guildId);
-			}
-
-			await interaction.reply({ embeds: [videoEmbed] });
-		}
-	}
-	if (interaction.commandName === "insert") {
-		if (!getVoiceConnection(interaction.guildId)) {
-			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
-			return;
-		}
-		let index = interaction.options.getInteger("position", false) - 1;
-
-		const song = await getSong(interaction.options.getString("query", true));
-
-		let videoEmbed: EmbedBuilder;
-		if (index && index > 0) {
-			if (index > client.queue.get(interaction.guildId).queue.length) index = client.queue.get(interaction.guildId).queue.push(song);
-			else client.queue.get(interaction.guildId).queue = [...client.queue.get(interaction.guildId).queue.slice(0, index), song, ...client.queue.get(interaction.guildId).queue.slice(index)];
-
-			videoEmbed = generateEmbed(song, interaction.user).addFields([
-				{
-					name: "Temps avant de le jouer",
-					value: durationToTime(
-						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.slice(0, index)
-								.reduce((p, c) => p + c.duration, 0) || 0)
-					),
-					inline: true,
-				},
-				{
-					name: "Position dans la queue :",
-					value: `**${index}**`,
-				},
-			]);
-		} else {
-			client.queue.get(interaction.guildId).queue.unshift(song);
-
-			videoEmbed = generateEmbed(song, interaction.user).addFields([
-				{
-					name: "Temps avant de le jouer",
-					value: durationToTime(
-						client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.slice(0, index)
-								.reduce((p, c) => p + c.duration, 0) || 0)
-					),
-					inline: true,
-				},
-				{
-					name: "Position dans la queue :",
-					value: `**${index}**`,
-				},
-			]);
-		}
-		await interaction.reply({ embeds: [videoEmbed] });
-	}
-	if (interaction.commandName === "search") {
-		if (!getVoiceConnection(interaction.guildId)) {
-			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
-			return;
-		}
-		const query = interaction.options.getString("query", true);
-		const results = interaction.options.getInteger("results", false) ?? 10;
-		let resultsNumber = results > 20 ? 20 : results < 5 ? 5 : results;
-		let songs = await searchSongs(query, resultsNumber);
-		let rows = [
-			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents([
-				new StringSelectMenuBuilder()
-					.setCustomId("song")
-					.setMinValues(1)
-					.setMaxValues(1)
-					.setPlaceholder("Sélectionnez la musique voulue...")
-					.addOptions(
-						songs.map((s) => ({
-							value: s.id,
-							label: `${s.title.slice(0, 100 - durationToTime(s.duration).length - 3)} | ${durationToTime(s.duration)}`,
-						}))
-					),
-			]),
-			new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId("c").setStyle(ButtonStyle.Danger).setEmoji("✖️")),
-		];
-		const message = (await interaction.reply({
-			content: "Résultat de la recherche :",
-			components: rows,
-			fetchReply: true,
-		})) as Message;
-
-		const collector = message.createMessageComponentCollector<ComponentType.StringSelect | ComponentType.Button>({
-			time: 60_000,
-		});
-		collector.on("collect", async (selected) => {
-			if (selected.user.id !== interaction.user.id) {
-				await selected.reply({
-					content: "Seul l'auteur de la commande peut choisir...",
-					ephemeral: true,
-				});
-				return;
-			}
-			if (selected.isButton()) {
-				await selected.update({ content: "Annulé", components: [] });
-				return;
-			} else if (selected.isStringSelectMenu()) {
-				const song = songs.find((e) => e.id === selected.values[0]);
 				const videoEmbed = generateEmbed(song, interaction.user);
 
 				if (client.queue.get(interaction.guildId).playing.id) {
@@ -658,9 +518,9 @@ client.on("interactionCreate", async (interaction) => {
 							name: "Temps avant de le jouer",
 							value: durationToTime(
 								client.queue.get(interaction.guildId).playBegin -
-									Math.floor(Date.now() / 1000) +
-									client.queue.get(interaction.guildId).playing.duration +
-									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+								Math.floor(Date.now() / 1000) +
+								client.queue.get(interaction.guildId).playing.duration +
+								(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 							),
 							inline: true,
 						},
@@ -670,11 +530,6 @@ client.on("interactionCreate", async (interaction) => {
 						},
 					]);
 					client.queue.get(interaction.guildId).queue.push(song);
-					await selected.update({
-						content: null,
-						components: [],
-						embeds: [videoEmbed],
-					});
 				} else {
 					client.queue.set(interaction.guildId, {
 						player: createAudioPlayer(),
@@ -684,18 +539,177 @@ client.on("interactionCreate", async (interaction) => {
 						loop: false,
 						loopQueue: false,
 					});
-					await selected.update({
-						content: null,
-						components: [],
-						embeds: [videoEmbed],
-					});
 
 					client.emit("playUpdate", interaction.guildId);
 					registerPlayer(interaction.guildId);
 				}
+
+				await interaction.reply({ embeds: [videoEmbed] });
+			} catch (e) {
+				await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
 			}
-			collector.stop();
-		});
+		}
+	}
+	if (interaction.commandName === "insert") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
+			return;
+		}
+		let index = interaction.options.getInteger("position", false) - 1;
+
+		try {
+
+			const song = await getSong(interaction.options.getString("query", true));
+
+			let videoEmbed: EmbedBuilder;
+			if (index && index > 0) {
+				if (index > client.queue.get(interaction.guildId).queue.length) index = client.queue.get(interaction.guildId).queue.push(song);
+				else client.queue.get(interaction.guildId).queue = [...client.queue.get(interaction.guildId).queue.slice(0, index), song, ...client.queue.get(interaction.guildId).queue.slice(index)];
+
+				videoEmbed = generateEmbed(song, interaction.user).addFields([
+					{
+						name: "Temps avant de le jouer",
+						value: durationToTime(
+							client.queue.get(interaction.guildId).playBegin -
+							Math.floor(Date.now() / 1000) +
+							client.queue.get(interaction.guildId).playing.duration +
+							(client.queue
+								.get(interaction.guildId)
+								.queue.slice(0, index)
+								.reduce((p, c) => p + c.duration, 0) || 0)
+						),
+						inline: true,
+					},
+					{
+						name: "Position dans la queue :",
+						value: `**${index}**`,
+					},
+				]);
+			} else {
+				client.queue.get(interaction.guildId).queue.unshift(song);
+
+				videoEmbed = generateEmbed(song, interaction.user).addFields([
+					{
+						name: "Temps avant de le jouer",
+						value: durationToTime(
+							client.queue.get(interaction.guildId).playBegin -
+							Math.floor(Date.now() / 1000) +
+							client.queue.get(interaction.guildId).playing.duration +
+							(client.queue
+								.get(interaction.guildId)
+								.queue.slice(0, index)
+								.reduce((p, c) => p + c.duration, 0) || 0)
+						),
+						inline: true,
+					},
+					{
+						name: "Position dans la queue :",
+						value: `**${index}**`,
+					},
+				]);
+			}
+			await interaction.reply({ embeds: [videoEmbed] });
+		} catch (e) {
+			await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
+		}
+	}
+	if (interaction.commandName === "search") {
+		if (!getVoiceConnection(interaction.guildId)) {
+			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
+			return;
+		}
+		const query = interaction.options.getString("query", true);
+		const results = interaction.options.getInteger("results", false) ?? 10;
+		let resultsNumber = results > 20 ? 20 : results < 5 ? 5 : results;
+		try {
+			let songs = await searchSongs(query, resultsNumber);
+			let rows = [
+				new ActionRowBuilder<StringSelectMenuBuilder>().addComponents([
+					new StringSelectMenuBuilder()
+						.setCustomId("song")
+						.setMinValues(1)
+						.setMaxValues(1)
+						.setPlaceholder("Sélectionnez la musique voulue...")
+						.addOptions(
+							songs.map((s) => ({
+								value: s.id,
+								label: `${s.title.slice(0, 100 - durationToTime(s.duration).length - 3)} | ${durationToTime(s.duration)}`,
+							}))
+						),
+				]),
+				new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId("c").setStyle(ButtonStyle.Danger).setEmoji("✖️")),
+			];
+			const message = (await interaction.reply({
+				content: "Résultat de la recherche :",
+				components: rows,
+				fetchReply: true,
+			})) as Message;
+
+			const collector = message.createMessageComponentCollector<ComponentType.StringSelect | ComponentType.Button>({
+				time: 60_000,
+			});
+			collector.on("collect", async (selected) => {
+				if (selected.user.id !== interaction.user.id) {
+					await selected.reply({
+						content: "Seul l'auteur de la commande peut choisir...",
+						ephemeral: true,
+					});
+					return;
+				}
+				if (selected.isButton()) {
+					await selected.update({ content: "Annulé", components: [] });
+					return;
+				} else if (selected.isStringSelectMenu()) {
+					const song = songs.find((e) => e.id === selected.values[0]);
+					const videoEmbed = generateEmbed(song, interaction.user);
+
+					if (client.queue.get(interaction.guildId).playing.id) {
+						videoEmbed.addFields([
+							{
+								name: "Temps avant de le jouer",
+								value: durationToTime(
+									client.queue.get(interaction.guildId).playBegin -
+									Math.floor(Date.now() / 1000) +
+									client.queue.get(interaction.guildId).playing.duration +
+									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+								),
+								inline: true,
+							},
+							{
+								name: "Position dans la queue :",
+								value: `**${client.queue.get(interaction.guildId).queue.length + 1}**`,
+							},
+						]);
+						client.queue.get(interaction.guildId).queue.push(song);
+						await selected.update({
+							content: null,
+							components: [],
+							embeds: [videoEmbed],
+						});
+					} else {
+						client.queue.set(interaction.guildId, {
+							player: createAudioPlayer(),
+							playBegin: Math.floor(Date.now() / 1000),
+							playing: song,
+							queue: [],
+							loop: false,
+							loopQueue: false,
+						});
+						await selected.update({
+							content: null,
+							components: [],
+							embeds: [videoEmbed],
+						});
+
+						client.emit("playUpdate", interaction.guildId);
+						registerPlayer(interaction.guildId);
+					}
+				}
+				collector.stop();
+			});
+		} catch (e) {
+			await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
+		}
 	} else if (interaction.commandName === "skip") {
 		if (!getVoiceConnection(interaction.guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
