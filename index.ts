@@ -173,12 +173,8 @@ function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 }
 
 function generateErrorEmbed(error: string): EmbedBuilder {
-	return new EmbedBuilder()
-		.setColor(0xFF0000)
-		.setTitle("The bot encountered an error")
-		.setDescription(error);
+	return new EmbedBuilder().setColor(0xff0000).setTitle("The bot encountered an error").setDescription(error);
 }
-	
 
 function addLeadingZero(num: number): string {
 	return num < 10 ? "0" + num : num.toString();
@@ -227,6 +223,24 @@ function registerPlayer(guildId: string): void {
 				player.removeAllListeners();
 			}
 		}
+	});
+}
+
+function registerConnection(guildId: string, connection: VoiceConnection): void {
+	connection.on("stateChange", (oldState, newState) => {
+		if (newState.status === VoiceConnectionStatus.Destroyed) {
+			client.queue.delete(guildId);
+		}
+		const oldNetworking = Reflect.get(oldState, "networking");
+		const newNetworking = Reflect.get(newState, "networking");
+
+		const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+			const newUdp = Reflect.get(newNetworkState, "udp");
+			clearInterval(newUdp?.keepAliveInterval);
+		};
+
+		oldNetworking?.off("stateChange", networkStateChangeHandler);
+		newNetworking?.on("stateChange", networkStateChangeHandler);
 	});
 }
 
@@ -414,11 +428,14 @@ client.on("interactionCreate", async (interaction) => {
 			});
 			return;
 		} else {
-			joinVoiceChannel({
-				channelId: channel.id,
-				guildId: interaction.guildId,
-				adapterCreator: interaction.guild.voiceAdapterCreator,
-			});
+			registerConnection(
+				interaction.guildId,
+				joinVoiceChannel({
+					channelId: channel.id,
+					guildId: interaction.guildId,
+					adapterCreator: interaction.guild.voiceAdapterCreator,
+				})
+			);
 
 			await interaction.reply("✅ - Joined " + channel.name);
 			return;
@@ -445,13 +462,17 @@ client.on("interactionCreate", async (interaction) => {
 				queue: [],
 			});
 		if (!getVoiceConnection(interaction.guildId)) {
+			await (interaction.member as GuildMember).fetch();
 			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null;
 			if (channel) {
-				joinVoiceChannel({
+				registerConnection(
+					interaction.guildId,
+					joinVoiceChannel({
 					channelId: channel.id,
 					guildId: interaction.guild.id,
 					adapterCreator: interaction.guild.voiceAdapterCreator,
-				});
+					})
+				);
 			} else {
 				await interaction.reply({
 					content: "Vous n'êtes pas dans un salon vocal !",
@@ -474,9 +495,9 @@ client.on("interactionCreate", async (interaction) => {
 							name: "Temps avant de le jouer",
 							value: durationToTime(
 								client.queue.get(interaction.guildId).playBegin -
-								Math.floor(Date.now() / 1000) +
-								client.queue.get(interaction.guildId).playing.duration +
-								(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+									Math.floor(Date.now() / 1000) +
+									client.queue.get(interaction.guildId).playing.duration +
+									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 							),
 							inline: true,
 						},
@@ -504,8 +525,6 @@ client.on("interactionCreate", async (interaction) => {
 			} catch (e) {
 				await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
 			}
-
-			
 		} else {
 			try {
 				const song: Song = await getSong(query);
@@ -518,9 +537,9 @@ client.on("interactionCreate", async (interaction) => {
 							name: "Temps avant de le jouer",
 							value: durationToTime(
 								client.queue.get(interaction.guildId).playBegin -
-								Math.floor(Date.now() / 1000) +
-								client.queue.get(interaction.guildId).playing.duration +
-								(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+									Math.floor(Date.now() / 1000) +
+									client.queue.get(interaction.guildId).playing.duration +
+									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 							),
 							inline: true,
 						},
@@ -558,7 +577,6 @@ client.on("interactionCreate", async (interaction) => {
 		let index = interaction.options.getInteger("position", false) - 1;
 
 		try {
-
 			const song = await getSong(interaction.options.getString("query", true));
 
 			let videoEmbed: EmbedBuilder;
@@ -571,12 +589,12 @@ client.on("interactionCreate", async (interaction) => {
 						name: "Temps avant de le jouer",
 						value: durationToTime(
 							client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.slice(0, index)
-								.reduce((p, c) => p + c.duration, 0) || 0)
+								Math.floor(Date.now() / 1000) +
+								client.queue.get(interaction.guildId).playing.duration +
+								(client.queue
+									.get(interaction.guildId)
+									.queue.slice(0, index)
+									.reduce((p, c) => p + c.duration, 0) || 0)
 						),
 						inline: true,
 					},
@@ -593,12 +611,12 @@ client.on("interactionCreate", async (interaction) => {
 						name: "Temps avant de le jouer",
 						value: durationToTime(
 							client.queue.get(interaction.guildId).playBegin -
-							Math.floor(Date.now() / 1000) +
-							client.queue.get(interaction.guildId).playing.duration +
-							(client.queue
-								.get(interaction.guildId)
-								.queue.slice(0, index)
-								.reduce((p, c) => p + c.duration, 0) || 0)
+								Math.floor(Date.now() / 1000) +
+								client.queue.get(interaction.guildId).playing.duration +
+								(client.queue
+									.get(interaction.guildId)
+									.queue.slice(0, index)
+									.reduce((p, c) => p + c.duration, 0) || 0)
 						),
 						inline: true,
 					},
@@ -669,9 +687,9 @@ client.on("interactionCreate", async (interaction) => {
 								name: "Temps avant de le jouer",
 								value: durationToTime(
 									client.queue.get(interaction.guildId).playBegin -
-									Math.floor(Date.now() / 1000) +
-									client.queue.get(interaction.guildId).playing.duration +
-									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+										Math.floor(Date.now() / 1000) +
+										client.queue.get(interaction.guildId).playing.duration +
+										(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 								),
 								inline: true,
 							},
