@@ -226,22 +226,10 @@ function registerPlayer(guildId: string): void {
 	});
 }
 
+const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => { const newUdp = Reflect.get(newNetworkState, 'udp'); clearInterval(newUdp?.keepAliveInterval); }
+
 function registerConnection(guildId: string, connection: VoiceConnection): void {
-	connection.on("stateChange", (oldState, newState) => {
-		if (newState.status === VoiceConnectionStatus.Destroyed) {
-			client.queue.delete(guildId);
-		}
-		const oldNetworking = Reflect.get(oldState, "networking");
-		const newNetworking = Reflect.get(newState, "networking");
-
-		const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-			const newUdp = Reflect.get(newNetworkState, "udp");
-			clearInterval(newUdp?.keepAliveInterval);
-		};
-
-		oldNetworking?.off("stateChange", networkStateChangeHandler);
-		newNetworking?.on("stateChange", networkStateChangeHandler);
-	});
+	connection.on('stateChange', (oldState, newState) => { Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler); Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler); });
 }
 
 class Rythm extends Client {
