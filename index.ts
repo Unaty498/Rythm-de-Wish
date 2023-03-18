@@ -129,7 +129,7 @@ function searchSongs(query: string, limit: number): Promise<Song[]> {
 			}).then((results: YouTubeVideo[]) => {
 				resolve(results.map(formatSong));
 			});
-		} catch (err) {
+		} catch (err: unknown) {
 			reject("Couldn't search for the video.");
 		}
 	});
@@ -510,8 +510,8 @@ client.on("interactionCreate", async (interaction) => {
 					registerPlayer(interaction.guildId);
 				}
 				await interaction.reply({ embeds: [embed] });
-			} catch (e) {
-				await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
+			} catch (e: unknown) {
+				await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
 			}
 		} else {
 			try {
@@ -552,8 +552,8 @@ client.on("interactionCreate", async (interaction) => {
 				}
 
 				await interaction.reply({ embeds: [videoEmbed] });
-			} catch (e) {
-				await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
+			} catch (e: unknown) {
+				await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
 			}
 		}
 	}
@@ -615,8 +615,8 @@ client.on("interactionCreate", async (interaction) => {
 				]);
 			}
 			await interaction.reply({ embeds: [videoEmbed] });
-		} catch (e) {
-			await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
+		} catch (e: unknown) {
+			await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
 		}
 	}
 	if (interaction.commandName === "search") {
@@ -713,8 +713,8 @@ client.on("interactionCreate", async (interaction) => {
 				}
 				collector.stop();
 			});
-		} catch (e) {
-			await interaction.reply({ embeds: [generateErrorEmbed(e)], ephemeral: true });
+		} catch (e: unknown) {
+			await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
 		}
 	} else if (interaction.commandName === "skip") {
 		if (!getVoiceConnection(interaction.guildId)) {
