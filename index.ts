@@ -16,11 +16,12 @@ import {
 	ButtonStyle,
 	ComponentType,
 	StringSelectMenuBuilder,
+	AttachmentBuilder,
 } from "discord.js";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
 
-import PlayDl, { YouTubePlayList, YouTubeVideo } from "play-dl";
+import PlayDl, { YouTubePlayList, YouTubeVideo, stream } from "play-dl";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -226,10 +227,16 @@ function registerPlayer(guildId: string): void {
 	});
 }
 
-const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => { const newUdp = Reflect.get(newNetworkState, 'udp'); clearInterval(newUdp?.keepAliveInterval); }
+const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+	const newUdp = Reflect.get(newNetworkState, "udp");
+	clearInterval(newUdp?.keepAliveInterval);
+};
 
 function registerConnection(guildId: string, connection: VoiceConnection): void {
-	connection.on('stateChange', (oldState, newState) => { Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler); Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler); });
+	connection.on("stateChange", (oldState, newState) => {
+		Reflect.get(oldState, "networking")?.off("stateChange", networkStateChangeHandler);
+		Reflect.get(newState, "networking")?.on("stateChange", networkStateChangeHandler);
+	});
 }
 
 class Rythm extends Client {
@@ -388,6 +395,33 @@ client.once("ready", () => {
 					},
 				],
 			},
+			{
+				name: "download",
+				description: "Télécharge la musique",
+				options: [
+					{
+						name: "query",
+						description: "Nom / Lien de la musique",
+						required: true,
+						type: ApplicationCommandOptionType.String,
+					},
+					{
+						name: "start",
+						description: "Position de départ de la musique en secondes",
+						type: ApplicationCommandOptionType.Integer,
+						minValue: 0,
+						required: false,
+					},
+					{
+						name: "end",
+						description: "Position de fin de la musique en secondes",
+						type: ApplicationCommandOptionType.Integer,
+						minValue: 0,
+						required: false,
+					},
+				],
+
+			}
 		]);
 	});
 });
@@ -443,6 +477,31 @@ client.on("interactionCreate", async (interaction) => {
 			});
 		}
 	}
+	if (interaction.commandName === "download") {
+		const query = interaction.options.getString("query", true);
+		const start = interaction.options.getInteger("start", false);
+		const end = interaction.options.getInteger("end", false);
+
+		const song = await getSong(query);
+		if (!song) {
+			await interaction.reply({
+				content: "Aucune musique trouvée !",
+				ephemeral: true,
+			});
+			return;
+		}
+		await interaction.deferReply();
+		const stream = await PlayDl.stream(song.url, {
+			seek: start,
+		})
+		const attachment = new AttachmentBuilder(stream.stream, {
+			name: song.title
+		});
+		await interaction.editReply({
+			content: "Téléchargement de " + song.title + " en cours...",
+			files: [attachment],
+		});
+	}
 	if (interaction.commandName === "play") {
 		if (!client.queue.get(interaction.guildId))
 			client.queue.set(interaction.guildId, {
@@ -456,9 +515,9 @@ client.on("interactionCreate", async (interaction) => {
 				registerConnection(
 					interaction.guildId,
 					joinVoiceChannel({
-					channelId: channel.id,
-					guildId: interaction.guild.id,
-					adapterCreator: interaction.guild.voiceAdapterCreator,
+						channelId: channel.id,
+						guildId: interaction.guild.id,
+						adapterCreator: interaction.guild.voiceAdapterCreator,
 					})
 				);
 			} else {
