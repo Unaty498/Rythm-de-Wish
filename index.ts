@@ -20,7 +20,8 @@ import {
 } from "discord.js";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
-
+import ytdl from "ytdl-core";
+import fs from "fs";
 import PlayDl, { YouTubePlayList, YouTubeVideo, stream } from "play-dl";
 import dotenv from "dotenv";
 dotenv.config();
@@ -405,23 +406,8 @@ client.once("ready", () => {
 						required: true,
 						type: ApplicationCommandOptionType.String,
 					},
-					{
-						name: "start",
-						description: "Position de départ de la musique en secondes",
-						type: ApplicationCommandOptionType.Integer,
-						minValue: 0,
-						required: false,
-					},
-					{
-						name: "end",
-						description: "Position de fin de la musique en secondes",
-						type: ApplicationCommandOptionType.Integer,
-						minValue: 0,
-						required: false,
-					},
 				],
-
-			}
+			},
 		]);
 	});
 });
@@ -479,8 +465,6 @@ client.on("interactionCreate", async (interaction) => {
 	}
 	if (interaction.commandName === "download") {
 		const query = interaction.options.getString("query", true);
-		const start = interaction.options.getInteger("start", false);
-		const end = interaction.options.getInteger("end", false);
 
 		const song = await getSong(query);
 		if (!song) {
@@ -491,15 +475,14 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		await interaction.deferReply();
-		const stream = await PlayDl.stream(song.url, {
-			seek: start,
-		})
-		const attachment = new AttachmentBuilder(stream.stream, {
-			name: song.title
+		const stream = ytdl(song.url, {
+			quality: "highestaudio",
+			highWaterMark: 16384,
 		});
+
 		await interaction.editReply({
-			content: "Téléchargement de " + song.title + " en cours...",
-			files: [attachment],
+			content: `🎶 **${song.title}** a été téléchargé !`,
+			files: [new AttachmentBuilder(stream).setName(song.title + ".mp3")],
 		});
 	}
 	if (interaction.commandName === "play") {

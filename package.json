@@ -29,6 +29,7 @@
     "play-dl": "^1.9.6",
     "typescript": "^5.0.2",
     "utf-8-validate": "^6.0.3",
+    "ytdl-core": "4.9.1",
     "zlib-sync": "^0.1.8"
   }
 }
