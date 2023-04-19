@@ -17,6 +17,7 @@ import {
 	ComponentType,
 	StringSelectMenuBuilder,
 	AttachmentBuilder,
+	TextChannel,
 } from "discord.js";
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
@@ -214,6 +215,7 @@ function registerPlayer(guildId: string): void {
 					playBegin: Math.floor(Date.now() / 1000),
 					playing: play,
 					queue: client.queue.get(guildId).queue,
+					channel: client.queue.get(guildId).channel
 				});
 				client.emit("playUpdate", guildId);
 			} else {
@@ -221,6 +223,7 @@ function registerPlayer(guildId: string): void {
 					playBegin: undefined,
 					playing: {},
 					queue: [],
+					channel: client.queue.get(guildId).channel,
 				});
 				player.removeAllListeners();
 			}
@@ -244,6 +247,7 @@ class Rythm extends Client {
 	queue: Collection<
 		Snowflake,
 		{
+			channel: Snowflake;
 			loop?: boolean;
 			loopQueue?: boolean;
 			player?: AudioPlayer;
@@ -420,6 +424,7 @@ client.on("interactionCreate", async (interaction) => {
 			client.queue.set(interaction.guildId, {
 				playing: {},
 				queue: [],
+				channel: interaction.channelId
 			});
 		let channel = (interaction.options.getChannel("salon", false) as GuildChannel) ?? (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() ? interaction.channel : null);
 
@@ -492,10 +497,11 @@ client.on("interactionCreate", async (interaction) => {
 		}
 	}
 	if (interaction.commandName === "play") {
-		if (!client.queue.get(interaction.guildId))
+		if (!client.queue.has(interaction.guildId))
 			client.queue.set(interaction.guildId, {
 				playing: {},
 				queue: [],
+				channel: interaction.channelId,
 			});
 		if (!getVoiceConnection(interaction.guildId)) {
 			await (interaction.member as GuildMember).fetch();
@@ -552,6 +558,7 @@ client.on("interactionCreate", async (interaction) => {
 						queue: playlist.songs,
 						loop: false,
 						loopQueue: false,
+						channel: interaction.channelId
 					});
 
 					client.emit("playUpdate", interaction.guildId);
@@ -593,6 +600,7 @@ client.on("interactionCreate", async (interaction) => {
 						queue: [],
 						loop: false,
 						loopQueue: false,
+						channel: interaction.channelId
 					});
 
 					client.emit("playUpdate", interaction.guildId);
@@ -748,6 +756,7 @@ client.on("interactionCreate", async (interaction) => {
 							queue: [],
 							loop: false,
 							loopQueue: false,
+							channel: interaction.channelId,
 						});
 						await selected.update({
 							content: null,
@@ -1032,6 +1041,7 @@ client.on("playUpdate", async (guildId: string) => {
 			player.play(resource);
 			getVoiceConnection(guildId).subscribe(player);
 		} catch (e) {
+			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send("Une erreur est survenue lors de la lecture de la musique !");
 			client.emit("playUpdate", guildId)
 		}
 	} else {
