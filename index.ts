@@ -480,10 +480,16 @@ client.on("interactionCreate", async (interaction) => {
 			highWaterMark: 16384,
 		});
 
-		await interaction.editReply({
-			content: `🎶 **${song.title}** a été téléchargé !`,
-			files: [new AttachmentBuilder(stream).setName(song.title + ".mp3")],
-		});
+		try {
+			await interaction.editReply({
+				content: `🎶 **${song.title}** a été téléchargé !`,
+				files: [new AttachmentBuilder(stream).setName(song.title + ".mp3")],
+			});
+		} catch (err) {
+			await interaction.editReply({
+				content: "Une erreur est survenue lors du téléchargement de la musique",
+			});
+		}
 	}
 	if (interaction.commandName === "play") {
 		if (!client.queue.get(interaction.guildId))
@@ -1017,13 +1023,17 @@ client.on("playUpdate", async (guildId: string) => {
 		playing: { id },
 	} = client.queue.get(guildId);
 	if (id) {
-		client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000);
-		const stream = await PlayDl.stream(id);
-		const resource = createAudioResource(stream.stream, {
-			inputType: stream.type,
-		});
-		player.play(resource);
-		getVoiceConnection(guildId).subscribe(player);
+		try {
+			client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000);
+			const stream = await PlayDl.stream(id);
+			const resource = createAudioResource(stream.stream, {
+				inputType: stream.type,
+			});
+			player.play(resource);
+			getVoiceConnection(guildId).subscribe(player);
+		} catch (e) {
+			client.emit("playUpdate", guildId)
+		}
 	} else {
 		player.removeAllListeners();
 		player.stop();
