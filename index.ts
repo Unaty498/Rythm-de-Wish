@@ -1029,12 +1029,13 @@ client.on("interactionCreate", async (interaction) => {
 client.on("playUpdate", async (guildId: string) => {
 	const {
 		player,
-		playing: { id },
+		playing,
+		loopQueue,
 	} = client.queue.get(guildId);
-	if (id) {
+	if (playing.id) {
 		try {
 			client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000);
-			const stream = await PlayDl.stream(id);
+			const stream = await PlayDl.stream(playing.id);
 			const resource = createAudioResource(stream.stream, {
 				inputType: stream.type,
 			});
@@ -1042,6 +1043,28 @@ client.on("playUpdate", async (guildId: string) => {
 			getVoiceConnection(guildId).subscribe(player);
 		} catch (e) {
 			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send("Une erreur est survenue lors de la lecture de la musique !");
+			if (client.queue.get(guildId).queue.length > 0) {
+				if (loopQueue) {
+					client.queue.get(guildId).queue.push(playing as { id: string; duration: number });
+				}
+				const play = client.queue.get(guildId).queue.shift();
+				client.queue.set(guildId, {
+					player: player,
+					playBegin: Math.floor(Date.now() / 1000),
+					playing: play,
+					queue: client.queue.get(guildId).queue,
+					channel: client.queue.get(guildId).channel,
+				});
+				client.emit("playUpdate", guildId);
+			} else {
+				client.queue.set(guildId, {
+					playBegin: undefined,
+					playing: {},
+					queue: [],
+					channel: client.queue.get(guildId).channel,
+				});
+				player.removeAllListeners();
+			}
 			client.emit("playUpdate", guildId)
 		}
 	} else {
