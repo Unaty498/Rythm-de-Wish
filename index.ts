@@ -1042,7 +1042,7 @@ client.on("playUpdate", async (guildId: string) => {
 			player.play(resource);
 			getVoiceConnection(guildId).subscribe(player);
 		} catch (e) {
-			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send("Une erreur est survenue lors de la lecture de la musique !");
+			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send(`Une erreur est survenue lors de la lecture de la musique : [${playing.title}](${playing.url})`);
 			if (client.queue.get(guildId).queue.length > 0) {
 				if (loopQueue) {
 					client.queue.get(guildId).queue.push(playing as { id: string; duration: number });
