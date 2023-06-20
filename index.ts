@@ -56,21 +56,20 @@ interface Playlist {
 }
 
 function getPlaylist(url: string): Promise<Playlist> {
-	return new Promise((resolve, reject) => {
+	return new Promise(async (resolve, reject) => {
 		try {
-			PlayDl.playlist_info(url, { incomplete: true }).then(async (res: YouTubePlayList) => {
-				const songs = (await res.all_videos()).map(formatSong);
-				resolve({
-					title: res.title,
-					songs: songs,
-					url: res.url,
-					thumbnail: res.thumbnail.url,
-					duration: songs.reduce((acc, song) => acc + song.duration, 0),
-					artist: {
-						name: res.channel.name,
-						icon: res.channel.icons[0].url,
-					},
-				});
+			const res = await PlayDl.playlist_info(url, { incomplete: true });
+			const songs = (await res.all_videos()).map(formatSong);
+			resolve({
+				title: res.title,
+				songs: songs,
+				url: res.url,
+				thumbnail: res.thumbnail.url,
+				duration: songs.reduce((acc, song) => acc + song.duration, 0),
+				artist: {
+					name: res.channel.name,
+					icon: res.channel.icons[0].url,
+				},
 			});
 		} catch (err) {
 			reject("Couldn't find/get the playlist.");
@@ -215,7 +214,7 @@ function registerPlayer(guildId: string): void {
 					playBegin: Math.floor(Date.now() / 1000),
 					playing: play,
 					queue: client.queue.get(guildId).queue,
-					channel: client.queue.get(guildId).channel
+					channel: client.queue.get(guildId).channel,
 				});
 				client.emit("playUpdate", guildId);
 			} else {
@@ -424,7 +423,7 @@ client.on("interactionCreate", async (interaction) => {
 			client.queue.set(interaction.guildId, {
 				playing: {},
 				queue: [],
-				channel: interaction.channelId
+				channel: interaction.channelId,
 			});
 		let channel = (interaction.options.getChannel("salon", false) as GuildChannel) ?? (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() ? interaction.channel : null);
 
@@ -558,7 +557,7 @@ client.on("interactionCreate", async (interaction) => {
 						queue: playlist.songs,
 						loop: false,
 						loopQueue: false,
-						channel: interaction.channelId
+						channel: interaction.channelId,
 					});
 
 					client.emit("playUpdate", interaction.guildId);
@@ -600,7 +599,7 @@ client.on("interactionCreate", async (interaction) => {
 						queue: [],
 						loop: false,
 						loopQueue: false,
-						channel: interaction.channelId
+						channel: interaction.channelId,
 					});
 
 					client.emit("playUpdate", interaction.guildId);
@@ -1027,11 +1026,7 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.on("playUpdate", async (guildId: string) => {
-	const {
-		player,
-		playing,
-		loopQueue,
-	} = client.queue.get(guildId);
+	const { player, playing, loopQueue } = client.queue.get(guildId);
 	if (playing.id) {
 		try {
 			client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000);
@@ -1042,7 +1037,9 @@ client.on("playUpdate", async (guildId: string) => {
 			player.play(resource);
 			getVoiceConnection(guildId).subscribe(player);
 		} catch (e) {
-			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send({embeds: [generateErrorEmbed("\u200b").setDescription(`Une erreur est survenue lors de la lecture de la musique : [${playing.title}](${playing.url})\n${e}`)]});
+			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send({
+				embeds: [generateErrorEmbed("\u200b").setDescription(`Une erreur est survenue lors de la lecture de la musique : [${playing.title}](${playing.url})\n${e}`)],
+			});
 			if (client.queue.get(guildId).queue.length > 0) {
 				if (loopQueue) {
 					client.queue.get(guildId).queue.push(playing as { id: string; duration: number });
@@ -1065,7 +1062,7 @@ client.on("playUpdate", async (guildId: string) => {
 				});
 				player?.removeAllListeners();
 			}
-			client.emit("playUpdate", guildId)
+			client.emit("playUpdate", guildId);
 		}
 	} else {
 		player?.removeAllListeners();
