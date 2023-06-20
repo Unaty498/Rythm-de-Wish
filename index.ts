@@ -225,7 +225,7 @@ function registerPlayer(guildId: string): void {
 					queue: [],
 					channel: client.queue.get(guildId).channel,
 				});
-				player.removeAllListeners();
+				player?.removeAllListeners();
 			}
 		}
 	});
@@ -1042,7 +1042,7 @@ client.on("playUpdate", async (guildId: string) => {
 			player.play(resource);
 			getVoiceConnection(guildId).subscribe(player);
 		} catch (e) {
-			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send(`Une erreur est survenue lors de la lecture de la musique : [${playing.title}](${playing.url})`);
+			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send({embeds: [generateErrorEmbed("\u200b").setDescription(`Une erreur est survenue lors de la lecture de la musique : [${playing.title}](${playing.url})\n${e}`)]});
 			if (client.queue.get(guildId).queue.length > 0) {
 				if (loopQueue) {
 					client.queue.get(guildId).queue.push(playing as { id: string; duration: number });
@@ -1063,12 +1063,12 @@ client.on("playUpdate", async (guildId: string) => {
 					queue: [],
 					channel: client.queue.get(guildId).channel,
 				});
-				player.removeAllListeners();
+				player?.removeAllListeners();
 			}
 			client.emit("playUpdate", guildId)
 		}
 	} else {
-		player.removeAllListeners();
+		player?.removeAllListeners();
 		player.stop();
 	}
 });
