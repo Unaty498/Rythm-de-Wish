@@ -96,7 +96,7 @@ function formatSong(song: YouTubeVideo): Song {
 }
 
 function getSong(query: string): Promise<Song> {
-	return new Promise((resolve, reject) => {
+	return new Promise(async (resolve, reject) => {
 		try {
 			if (query.startsWith("https://") && PlayDl.yt_validate(query) === "video") {
 				PlayDl.video_basic_info(query).then(({ video_details: res }) => {
@@ -104,16 +104,17 @@ function getSong(query: string): Promise<Song> {
 					return;
 				});
 			}
-			PlayDl.search(query, {
+			const results = await PlayDl.search(query, {
 				source: {
 					youtube: "video",
 				},
 				limit: 1,
-			}).then((results: YouTubeVideo[]) => {
-				if (results.length > 0) {
-					resolve(formatSong(results[0]));
-				}
-			});
+			})
+			if (results.length > 0) {
+				resolve(formatSong(results[0]));
+			} else {
+				reject("Couldn't find/get the video.");
+			}
 		} catch (err) {
 			reject("Couldn't find/get the video.");
 		}
@@ -121,16 +122,15 @@ function getSong(query: string): Promise<Song> {
 }
 
 function searchSongs(query: string, limit: number): Promise<Song[]> {
-	return new Promise((resolve, reject) => {
+	return new Promise(async (resolve, reject) => {
 		try {
-			PlayDl.search(query, {
+			const results = await PlayDl.search(query, {
 				source: {
 					youtube: "video",
 				},
 				limit,
-			}).then((results: YouTubeVideo[]) => {
-				resolve(results.map(formatSong));
 			});
+			resolve(results.map(formatSong));
 		} catch (err: unknown) {
 			reject("Couldn't search for the video.");
 		}
