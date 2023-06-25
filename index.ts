@@ -719,6 +719,7 @@ client.on("interactionCreate", async (interaction) => {
 				}
 				if (selected.isButton()) {
 					await selected.update({ content: "Annulé", components: [] });
+					collector.stop();
 					return;
 				} else if (selected.isStringSelectMenu()) {
 					const song = songs.find((e) => e.id === selected.values[0]);
@@ -767,8 +768,16 @@ client.on("interactionCreate", async (interaction) => {
 						registerPlayer(interaction.guildId);
 					}
 				}
-				collector.stop();
+				collector.stop("ok");
 			});
+			
+			collector.on("end", (_, r) => {
+				if (r !== "ok") {
+					interaction.editReply("Annulé (timeout)...");
+					return;
+				}
+			})
+
 		} catch (e: unknown) {
 			await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
 		}
