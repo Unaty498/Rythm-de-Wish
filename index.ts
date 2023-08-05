@@ -1075,7 +1075,7 @@ client.on("playUpdate", async (guildId: string) => {
 		}
 	} else {
 		player?.removeAllListeners();
-		player.stop();
+		player?.stop();
 	}
 });
 
