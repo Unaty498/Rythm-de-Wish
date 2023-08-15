@@ -496,15 +496,16 @@ client.on("interactionCreate", async (interaction) => {
 		}
 	}
 	if (interaction.commandName === "play") {
-		if (!client.queue.has(interaction.guildId))
+		if (!client.queue.has(interaction.guildId)) {
 			client.queue.set(interaction.guildId, {
 				playing: {},
 				queue: [],
 				channel: interaction.channelId,
 			});
+		}
 		if (!getVoiceConnection(interaction.guildId)) {
 			await (interaction.member as GuildMember).fetch();
-			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null;
+			const channel = (interaction.member as GuildMember).voice?.channel ?? ((interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null);
 			if (channel) {
 				registerConnection(
 					interaction.guildId,
@@ -524,6 +525,7 @@ client.on("interactionCreate", async (interaction) => {
 		}
 		let query = interaction.options.getString("query", true);
 
+		await interaction.deferReply();
 		if (query.match(/^https?:\/\//g) && PlayDl.yt_validate(query) === "playlist") {
 			try {
 				const playlist = await getPlaylist(query);
@@ -563,9 +565,9 @@ client.on("interactionCreate", async (interaction) => {
 					client.emit("playUpdate", interaction.guildId);
 					registerPlayer(interaction.guildId);
 				}
-				await interaction.reply({ embeds: [embed] });
+				await interaction.editReply({ embeds: [embed] });
 			} catch (e: unknown) {
-				await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
+				await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())] });
 			}
 		} else {
 			try {
@@ -606,9 +608,9 @@ client.on("interactionCreate", async (interaction) => {
 					registerPlayer(interaction.guildId);
 				}
 
-				await interaction.reply({ embeds: [videoEmbed] });
+				await interaction.editReply({ embeds: [videoEmbed] });
 			} catch (e: unknown) {
-				await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
+				await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())] });
 			}
 		}
 	}
@@ -617,6 +619,7 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
 			return;
 		}
+		await interaction.deferReply();
 		let index = interaction.options.getInteger("position", false) - 1;
 
 		try {
@@ -669,9 +672,9 @@ client.on("interactionCreate", async (interaction) => {
 					},
 				]);
 			}
-			await interaction.reply({ embeds: [videoEmbed] });
+			await interaction.editReply({ embeds: [videoEmbed] });
 		} catch (e: unknown) {
-			await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
+			await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())] });
 		}
 	}
 	if (interaction.commandName === "search") {
@@ -679,6 +682,7 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
 			return;
 		}
+		await interaction.deferReply();
 		const query = interaction.options.getString("query", true);
 		const results = interaction.options.getInteger("results", false) ?? 10;
 		let resultsNumber = results > 20 ? 20 : results < 5 ? 5 : results;
@@ -700,10 +704,9 @@ client.on("interactionCreate", async (interaction) => {
 				]),
 				new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId("c").setStyle(ButtonStyle.Danger).setEmoji("✖️")),
 			];
-			const message = (await interaction.reply({
+			const message = (await interaction.editReply({
 				content: "Résultat de la recherche :",
 				components: rows,
-				fetchReply: true,
 			})) as Message;
 
 			const collector = message.createMessageComponentCollector<ComponentType.StringSelect | ComponentType.Button>({
@@ -779,7 +782,7 @@ client.on("interactionCreate", async (interaction) => {
 			})
 
 		} catch (e: unknown) {
-			await interaction.reply({ embeds: [generateErrorEmbed(e.toString())], ephemeral: true });
+			await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())]});
 		}
 	} else if (interaction.commandName === "skip") {
 		if (!getVoiceConnection(interaction.guildId)) {
