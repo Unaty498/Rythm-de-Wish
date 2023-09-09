@@ -418,9 +418,11 @@ client.once("ready", () => {
 client.on("interactionCreate", async (interaction) => {
 	if (!interaction.isChatInputCommand()) return;
 
-	if (interaction.commandName === "join") {
-		if (!client.queue.get(interaction.guildId))
-			client.queue.set(interaction.guildId, {
+	const { guildId, commandName } = interaction;
+
+	if (commandName === "join") {
+		if (!client.queue.get(guildId))
+			client.queue.set(guildId, {
 				playing: {},
 				queue: [],
 				channel: interaction.channelId,
@@ -441,10 +443,10 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		} else {
 			registerConnection(
-				interaction.guildId,
+				guildId,
 				joinVoiceChannel({
 					channelId: channel.id,
-					guildId: interaction.guildId,
+					guildId: guildId,
 					adapterCreator: interaction.guild.voiceAdapterCreator,
 				})
 			);
@@ -453,11 +455,11 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 	}
-	if (interaction.commandName === "leave") {
-		const connection = getVoiceConnection(interaction.guildId);
+	if (commandName === "leave") {
+		const connection = getVoiceConnection(guildId);
 
 		if (connection) {
-			client.queue.delete(interaction.guildId);
+			client.queue.delete(guildId);
 			connection.destroy();
 			await interaction.reply("Disconnected.");
 		} else {
@@ -467,7 +469,7 @@ client.on("interactionCreate", async (interaction) => {
 			});
 		}
 	}
-	if (interaction.commandName === "download") {
+	if (commandName === "download") {
 		const query = interaction.options.getString("query", true);
 
 		const song = await getSong(query);
@@ -495,20 +497,20 @@ client.on("interactionCreate", async (interaction) => {
 			});
 		}
 	}
-	if (interaction.commandName === "play") {
-		if (!client.queue.has(interaction.guildId)) {
-			client.queue.set(interaction.guildId, {
+	if (commandName === "play") {
+		if (!client.queue.has(guildId)) {
+			client.queue.set(guildId, {
 				playing: {},
 				queue: [],
 				channel: interaction.channelId,
 			});
 		}
-		if (!getVoiceConnection(interaction.guildId)) {
+		if (!getVoiceConnection(guildId)) {
 			await (interaction.member as GuildMember).fetch();
 			const channel = (interaction.member as GuildMember).voice?.channel ?? ((interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null);
 			if (channel) {
 				registerConnection(
-					interaction.guildId,
+					guildId,
 					joinVoiceChannel({
 						channelId: channel.id,
 						guildId: interaction.guild.id,
@@ -532,27 +534,27 @@ client.on("interactionCreate", async (interaction) => {
 
 				const embed = generatePlaylistEmbed(playlist, interaction.user);
 
-				if (client.queue.get(interaction.guildId).playing.id) {
+				if (client.queue.get(guildId).playing.id) {
 					embed.addFields([
 						{
 							name: "Temps avant de le jouer",
 							value: durationToTime(
-								client.queue.get(interaction.guildId).playBegin -
+								client.queue.get(guildId).playBegin -
 									Math.floor(Date.now() / 1000) +
-									client.queue.get(interaction.guildId).playing.duration +
-									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+									client.queue.get(guildId).playing.duration +
+									(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 							),
 							inline: true,
 						},
 						{
 							name: "Position dans la queue :",
-							value: `**${client.queue.get(interaction.guildId).queue.length + 1}-${client.queue.get(interaction.guildId).queue.length + playlist.songs.length + 1}**`,
+							value: `**${client.queue.get(guildId).queue.length + 1}-${client.queue.get(guildId).queue.length + playlist.songs.length + 1}**`,
 						},
 					]);
-					client.queue.get(interaction.guildId).queue = client.queue.get(interaction.guildId).queue.concat(playlist.songs);
+					client.queue.get(guildId).queue = client.queue.get(guildId).queue.concat(playlist.songs);
 				} else {
 					const song = playlist.songs.shift();
-					client.queue.set(interaction.guildId, {
+					client.queue.set(guildId, {
 						player: createAudioPlayer(),
 						playBegin: Math.floor(Date.now() / 1000),
 						playing: song,
@@ -562,8 +564,8 @@ client.on("interactionCreate", async (interaction) => {
 						channel: interaction.channelId,
 					});
 
-					client.emit("playUpdate", interaction.guildId);
-					registerPlayer(interaction.guildId);
+					client.emit("playUpdate", guildId);
+					registerPlayer(guildId);
 				}
 				await interaction.editReply({ embeds: [embed] });
 			} catch (e: unknown) {
@@ -575,26 +577,26 @@ client.on("interactionCreate", async (interaction) => {
 
 				const videoEmbed = generateEmbed(song, interaction.user);
 
-				if (client.queue.get(interaction.guildId).playing.id) {
+				if (client.queue.get(guildId).playing.id) {
 					videoEmbed.addFields([
 						{
 							name: "Temps avant de le jouer",
 							value: durationToTime(
-								client.queue.get(interaction.guildId).playBegin -
+								client.queue.get(guildId).playBegin -
 									Math.floor(Date.now() / 1000) +
-									client.queue.get(interaction.guildId).playing.duration +
-									(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+									client.queue.get(guildId).playing.duration +
+									(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 							),
 							inline: true,
 						},
 						{
 							name: "Position dans la queue :",
-							value: `**${client.queue.get(interaction.guildId).queue.length + 1}**`,
+							value: `**${client.queue.get(guildId).queue.length + 1}**`,
 						},
 					]);
-					client.queue.get(interaction.guildId).queue.push(song);
+					client.queue.get(guildId).queue.push(song);
 				} else {
-					client.queue.set(interaction.guildId, {
+					client.queue.set(guildId, {
 						player: createAudioPlayer(),
 						playBegin: Math.floor(Date.now() / 1000),
 						playing: song,
@@ -604,8 +606,8 @@ client.on("interactionCreate", async (interaction) => {
 						channel: interaction.channelId,
 					});
 
-					client.emit("playUpdate", interaction.guildId);
-					registerPlayer(interaction.guildId);
+					client.emit("playUpdate", guildId);
+					registerPlayer(guildId);
 				}
 
 				await interaction.editReply({ embeds: [videoEmbed] });
@@ -614,8 +616,8 @@ client.on("interactionCreate", async (interaction) => {
 			}
 		}
 	}
-	if (interaction.commandName === "insert") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	if (commandName === "insert") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
 			return;
 		}
@@ -627,18 +629,18 @@ client.on("interactionCreate", async (interaction) => {
 
 			let videoEmbed: EmbedBuilder;
 			if (index && index > 0) {
-				if (index > client.queue.get(interaction.guildId).queue.length) index = client.queue.get(interaction.guildId).queue.push(song);
-				else client.queue.get(interaction.guildId).queue = [...client.queue.get(interaction.guildId).queue.slice(0, index), song, ...client.queue.get(interaction.guildId).queue.slice(index)];
+				if (index > client.queue.get(guildId).queue.length) index = client.queue.get(guildId).queue.push(song);
+				else client.queue.get(guildId).queue = [...client.queue.get(guildId).queue.slice(0, index), song, ...client.queue.get(guildId).queue.slice(index)];
 
 				videoEmbed = generateEmbed(song, interaction.user).addFields([
 					{
 						name: "Temps avant de le jouer",
 						value: durationToTime(
-							client.queue.get(interaction.guildId).playBegin -
+							client.queue.get(guildId).playBegin -
 								Math.floor(Date.now() / 1000) +
-								client.queue.get(interaction.guildId).playing.duration +
+								client.queue.get(guildId).playing.duration +
 								(client.queue
-									.get(interaction.guildId)
+									.get(guildId)
 									.queue.slice(0, index)
 									.reduce((p, c) => p + c.duration, 0) || 0)
 						),
@@ -650,17 +652,17 @@ client.on("interactionCreate", async (interaction) => {
 					},
 				]);
 			} else {
-				client.queue.get(interaction.guildId).queue.unshift(song);
+				client.queue.get(guildId).queue.unshift(song);
 
 				videoEmbed = generateEmbed(song, interaction.user).addFields([
 					{
 						name: "Temps avant de le jouer",
 						value: durationToTime(
-							client.queue.get(interaction.guildId).playBegin -
+							client.queue.get(guildId).playBegin -
 								Math.floor(Date.now() / 1000) +
-								client.queue.get(interaction.guildId).playing.duration +
+								client.queue.get(guildId).playing.duration +
 								(client.queue
-									.get(interaction.guildId)
+									.get(guildId)
 									.queue.slice(0, index)
 									.reduce((p, c) => p + c.duration, 0) || 0)
 						),
@@ -677,8 +679,8 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())] });
 		}
 	}
-	if (interaction.commandName === "search") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	if (commandName === "search") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal pour jouer de la musique !");
 			return;
 		}
@@ -728,31 +730,31 @@ client.on("interactionCreate", async (interaction) => {
 					const song = songs.find((e) => e.id === selected.values[0]);
 					const videoEmbed = generateEmbed(song, interaction.user);
 
-					if (client.queue.get(interaction.guildId).playing.id) {
+					if (client.queue.get(guildId).playing.id) {
 						videoEmbed.addFields([
 							{
 								name: "Temps avant de le jouer",
 								value: durationToTime(
-									client.queue.get(interaction.guildId).playBegin -
+									client.queue.get(guildId).playBegin -
 										Math.floor(Date.now() / 1000) +
-										client.queue.get(interaction.guildId).playing.duration +
-										(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+										client.queue.get(guildId).playing.duration +
+										(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 								),
 								inline: true,
 							},
 							{
 								name: "Position dans la queue :",
-								value: `**${client.queue.get(interaction.guildId).queue.length + 1}**`,
+								value: `**${client.queue.get(guildId).queue.length + 1}**`,
 							},
 						]);
-						client.queue.get(interaction.guildId).queue.push(song);
+						client.queue.get(guildId).queue.push(song);
 						await selected.update({
 							content: null,
 							components: [],
 							embeds: [videoEmbed],
 						});
 					} else {
-						client.queue.set(interaction.guildId, {
+						client.queue.set(guildId, {
 							player: createAudioPlayer(),
 							playBegin: Math.floor(Date.now() / 1000),
 							playing: song,
@@ -767,8 +769,8 @@ client.on("interactionCreate", async (interaction) => {
 							embeds: [videoEmbed],
 						});
 
-						client.emit("playUpdate", interaction.guildId);
-						registerPlayer(interaction.guildId);
+						client.emit("playUpdate", guildId);
+						registerPlayer(guildId);
 					}
 				}
 				collector.stop("ok");
@@ -784,34 +786,34 @@ client.on("interactionCreate", async (interaction) => {
 		} catch (e: unknown) {
 			await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())]});
 		}
-	} else if (interaction.commandName === "skip") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "skip") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		let playing = client.queue.get(interaction.guildId).queue.shift() ?? {};
-		client.queue.get(interaction.guildId).playing = playing;
-		client.emit("playUpdate", interaction.guildId);
+		let playing = client.queue.get(guildId).queue.shift() ?? {};
+		client.queue.get(guildId).playing = playing;
+		client.emit("playUpdate", guildId);
 		await interaction.reply("Skipped");
-	} else if (interaction.commandName === "queue") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "queue") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
 		let page = 0;
-		let pages = [client.queue.get(interaction.guildId).playing]
-			.concat(client.queue.get(interaction.guildId).queue)
+		let pages = [client.queue.get(guildId).playing]
+			.concat(client.queue.get(guildId).queue)
 			.map((e, i, a) =>
 				i === 0
-					? `__Now playing__ :\n [${e.title}](${e.url}) | \`${durationToTime(client.queue.get(interaction.guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(interaction.guildId).playing.duration)}\`${
+					? `__Now playing__ :\n [${e.title}](${e.url}) | \`${durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration)}\`${
 							a.length > 1 ? "\n\n__Up Next__ :" : ""
 					  }`
 					: `\`${i}\` | [${e.title}](${e.url}) | \`${durationToTime(e.duration)}\`\n`
@@ -822,12 +824,12 @@ client.on("interactionCreate", async (interaction) => {
 			.setTitle("Queue :")
 			.setDescription(
 				getContent(page) +
-					`\n\n**${client.queue.get(interaction.guildId).queue.length} musique(s) dans la queue | Temps total : ${durationToTime(
-						client.queue.get(interaction.guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(interaction.guildId).playing.duration + (client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+					`\n\n**${client.queue.get(guildId).queue.length} musique(s) dans la queue | Temps total : ${durationToTime(
+						client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration + (client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 					)}**`
 			)
 			.setFooter({
-				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(interaction.guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(interaction.guildId).loopQueue ? "✅" : "❌"}`,
+				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"}`,
 				iconURL: interaction.user.avatarURL({ extension: "png" }),
 			});
 		if (calcTotalPages() > 1) {
@@ -867,15 +869,15 @@ client.on("interactionCreate", async (interaction) => {
 						queueEmbed
 							.setDescription(
 								getContent(page) +
-									`\n**${client.queue.get(interaction.guildId).queue.length} musique(s) dans la queue | Temps total : ${durationToTime(
-										client.queue.get(interaction.guildId).playBegin -
+									`\n**${client.queue.get(guildId).queue.length} musique(s) dans la queue | Temps total : ${durationToTime(
+										client.queue.get(guildId).playBegin -
 											Math.floor(Date.now() / 1000) +
-											client.queue.get(interaction.guildId).playing.duration +
-											(client.queue.get(interaction.guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+											client.queue.get(guildId).playing.duration +
+											(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 									)}**`
 							)
 							.setFooter({
-								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(interaction.guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(interaction.guildId).loopQueue ? "✅" : "❌"}`,
+								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"}`,
 								iconURL: interaction.user.avatarURL({ extension: "png" }),
 							}),
 					],
@@ -886,123 +888,123 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.reply({ embeds: [queueEmbed] });
 		}
 	}
-	if (interaction.commandName === "loop") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	if (commandName === "loop") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		client.queue.get(interaction.guildId).loop = !client.queue.get(interaction.guildId).loop;
-		await interaction.reply(`🔁 Loop ${!client.queue.get(interaction.guildId).loop ? "dés" : ""}activée !`);
+		client.queue.get(guildId).loop = !client.queue.get(guildId).loop;
+		await interaction.reply(`🔁 Loop ${!client.queue.get(guildId).loop ? "dés" : ""}activée !`);
 	}
-	if (interaction.commandName === "loop-queue") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	if (commandName === "loop-queue") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		client.queue.get(interaction.guildId).loopQueue = !client.queue.get(interaction.guildId).loopQueue;
-		await interaction.reply(`🔁 Loop ${!client.queue.get(interaction.guildId).loopQueue ? "dés" : ""}activée !`);
+		client.queue.get(guildId).loopQueue = !client.queue.get(guildId).loopQueue;
+		await interaction.reply(`🔁 Loop ${!client.queue.get(guildId).loopQueue ? "dés" : ""}activée !`);
 	}
-	if (interaction.commandName === "clear-queue") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	if (commandName === "clear-queue") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		if (client.queue.get(interaction.guildId).queue.length === 0) {
+		if (client.queue.get(guildId).queue.length === 0) {
 			await interaction.reply("La queue est déjà vide !");
 			return;
 		}
-		client.queue.get(interaction.guildId).queue = [];
+		client.queue.get(guildId).queue = [];
 		await interaction.reply("💥 Queue vidée !");
 	}
-	if (interaction.commandName === "clear") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	if (commandName === "clear") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		if (client.queue.get(interaction.guildId).queue.length === 0) {
+		if (client.queue.get(guildId).queue.length === 0) {
 			await interaction.reply("La queue est vide !");
 			return;
 		}
 		const index = interaction.options.getInteger("position", true) - 1;
-		let song = client.queue.get(interaction.guildId).queue[index];
+		let song = client.queue.get(guildId).queue[index];
 		if (song) {
-			client.queue.get(interaction.guildId).queue.splice(index, 1);
+			client.queue.get(guildId).queue.splice(index, 1);
 			await interaction.reply(`Enlevé le morceau : \`${song.title}\``);
 		} else {
 			await interaction.reply("Aucune musique n'est à cette position !");
 		}
-	} else if (interaction.commandName === "shuffle") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "shuffle") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		if (client.queue.get(interaction.guildId).queue.length === 0) {
+		if (client.queue.get(guildId).queue.length === 0) {
 			await interaction.reply("La queue est vide !");
 			return;
 		}
-		client.queue.get(interaction.guildId).queue = client.queue.get(interaction.guildId).queue.sort(() => Math.random() - 0.5);
+		client.queue.get(guildId).queue = client.queue.get(guildId).queue.sort(() => Math.random() - 0.5);
 		await interaction.reply("🔀 Queue mélangée !");
-	} else if (interaction.commandName === "pause") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "pause") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		if (client.queue.get(interaction.guildId).player.pause()) {
+		if (client.queue.get(guildId).player.pause()) {
 			await interaction.reply("⏸ Musique en pause !");
 		} else {
 			await interaction.reply("⏯ Musique déjà en pause !");
 		}
-	} else if (interaction.commandName === "resume") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "resume") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		if (client.queue.get(interaction.guildId).player.unpause()) {
+		if (client.queue.get(guildId).player.unpause()) {
 			await interaction.reply("▶ Musique reprise !");
 		} else {
 			await interaction.reply("▶ Musique déjà en cours !");
 		}
-	} else if (interaction.commandName === "now-playing") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "now-playing") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		const song = client.queue.get(interaction.guildId).playing;
-		const seconds = Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin;
+		const song = client.queue.get(guildId).playing;
+		const seconds = Math.floor(Date.now() / 1000) - client.queue.get(guildId).playBegin;
 		const chapter = song.chapters.find((chapter, index, array) => chapter.seconds <= seconds && (index === array.length - 1 || array[index + 1].seconds > seconds));
-		const state = Math.floor(((Math.floor(Date.now() / 1000) - client.queue.get(interaction.guildId).playBegin) / song.duration) * 30);
+		const state = Math.floor(((Math.floor(Date.now() / 1000) - client.queue.get(guildId).playBegin) / song.duration) * 30);
 		const string = `${"▬".repeat(state)}🔘${"▬".repeat(29 - state)}`;
 		const embed = new EmbedBuilder()
 			.setAuthor({
@@ -1013,26 +1015,26 @@ client.on("interactionCreate", async (interaction) => {
 			.setDescription(`[${song.title}](${song.url})\n\n\`${string}\`\n\n${chapter ? `Chapitre : \`${chapter.title}\`\n` : ""}\`${durationToTime(seconds)}/${durationToTime(song.duration)}\``)
 			.setThumbnail(song.thumbnail);
 		await interaction.reply({ embeds: [embed] });
-	} else if (interaction.commandName === "seek") {
-		if (!getVoiceConnection(interaction.guildId)) {
+	} else if (commandName === "seek") {
+		if (!getVoiceConnection(guildId)) {
 			await interaction.reply("Je dois être dans un salon vocal !");
 			return;
 		}
-		if (!client.queue.get(interaction.guildId).playing.id) {
+		if (!client.queue.get(guildId).playing.id) {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
 		const seconds = interaction.options.getInteger("position", true);
-		if (seconds > client.queue.get(interaction.guildId).playing.duration) {
-			await interaction.reply("La durée doit être inférieure à " + client.queue.get(interaction.guildId).playing.duration + " secondes !");
+		if (seconds > client.queue.get(guildId).playing.duration) {
+			await interaction.reply("La durée doit être inférieure à " + client.queue.get(guildId).playing.duration + " secondes !");
 			return;
 		}
-		const stream = await PlayDl.stream(client.queue.get(interaction.guildId).playing.id, { seek: seconds });
+		const stream = await PlayDl.stream(client.queue.get(guildId).playing.id, { seek: seconds });
 		const resource = createAudioResource(stream.stream, {
 			inputType: stream.type,
 		});
-		client.queue.get(interaction.guildId).player.play(resource);
-		client.queue.get(interaction.guildId).playBegin = Math.floor(Date.now() / 1000) - seconds;
+		client.queue.get(guildId).player.play(resource);
+		client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000) - seconds;
 		await interaction.reply("⏯ Positionné à `" + durationToTime(seconds) + "` !");
 	}
 });
