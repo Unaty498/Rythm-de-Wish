@@ -149,7 +149,7 @@ function generateEmbed(song: Song, user: User): EmbedBuilder {
 			{ name: "Durée", value: durationToTime(song.duration), inline: true },
 		])
 		.setFooter({
-			text: "Made by Unaty498",
+			text: "Made by @unaty",
 			iconURL: song.artist.icon,
 		});
 }
@@ -168,7 +168,7 @@ function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 			{ name: "Songs", value: playlist.songs.length.toString(), inline: true },
 		])
 		.setFooter({
-			text: "Made by Unaty498",
+			text: "Made by @unaty",
 			iconURL: playlist.artist.icon,
 		});
 }
