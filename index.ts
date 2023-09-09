@@ -22,7 +22,6 @@ import {
 
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
 import ytdl from "ytdl-core";
-import fs from "fs";
 import PlayDl, { YouTubePlayList, YouTubeVideo, stream } from "play-dl";
 import dotenv from "dotenv";
 dotenv.config();
@@ -175,7 +174,8 @@ function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 }
 
 function generateErrorEmbed(error: string): EmbedBuilder {
-	return new EmbedBuilder().setColor(0xff0000).setTitle("The bot encountered an error").setDescription(error);
+	const formatted = error.toString().slice(0, 4096).trim();
+	return new EmbedBuilder().setColor(0xff0000).setTitle("The bot encountered an error").setDescription(formatted);
 }
 
 function addLeadingZero(num: number): string {
@@ -491,7 +491,7 @@ client.on("interactionCreate", async (interaction) => {
 			});
 		} catch (err) {
 			await interaction.editReply({
-				content: "Une erreur est survenue lors du téléchargement de la musique",
+				embeds: [generateErrorEmbed(err)]
 			});
 		}
 	}
