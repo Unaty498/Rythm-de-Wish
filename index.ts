@@ -551,7 +551,7 @@ client.on("interactionCreate", async (interaction) => {
 					]);
 					client.queue.get(interaction.guildId).queue = client.queue.get(interaction.guildId).queue.concat(playlist.songs);
 				} else {
-					const song = playlist.songs.slice(0, 1)[0];
+					const song = playlist.songs.shift();
 					client.queue.set(interaction.guildId, {
 						player: createAudioPlayer(),
 						playBegin: Math.floor(Date.now() / 1000),
