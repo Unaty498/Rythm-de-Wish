@@ -829,7 +829,7 @@ client.on("interactionCreate", async (interaction) => {
 					)}**`
 			)
 			.setFooter({
-				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"}`,
+				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"} | made by @unaty`,
 				iconURL: interaction.user.avatarURL({ extension: "png" }),
 			});
 		if (calcTotalPages() > 1) {
@@ -877,7 +877,7 @@ client.on("interactionCreate", async (interaction) => {
 									)}**`
 							)
 							.setFooter({
-								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"}`,
+								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"} | Made by @unaty`,
 								iconURL: interaction.user.avatarURL({ extension: "png" }),
 							}),
 					],
