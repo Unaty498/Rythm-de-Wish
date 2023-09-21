@@ -150,7 +150,7 @@ function generateEmbed(song: Song, user: User): EmbedBuilder {
 		])
 		.setFooter({
 			text: "Made by @unaty",
-			iconURL: song.artist.icon,
+			iconURL: "https://cdn.discordapp.com/avatars/272013870191738881/049f3e0331f80997e421a1c7cd58fe5b.webp",
 		});
 }
 
@@ -169,7 +169,7 @@ function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 		])
 		.setFooter({
 			text: "Made by @unaty",
-			iconURL: playlist.artist.icon,
+			iconURL: "https://cdn.discordapp.com/avatars/272013870191738881/049f3e0331f80997e421a1c7cd58fe5b.webp",
 		});
 }
 
