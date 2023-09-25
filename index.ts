@@ -83,11 +83,11 @@ function formatSong(song: YouTubeVideo): Song {
 	return {
 		id: song.id,
 		duration: song.durationInSec,
-		title: songTitle ? (typeof songTitle === "string" ? songTitle : songTitle.text) : song.title,
+		title: songTitle ?? song.title,
 		url: song.url,
 		thumbnail: song.thumbnails[0].url,
 		artist: {
-			name: artist ? (typeof artist === "string" ? artist : artist.text) : song.channel.name,
+			name: artist ?? song.channel.name,
 			icon: song.channel.icons[0].url,
 		},
 		chapters: song.chapters.map(({ title, seconds }) => ({ title, seconds })),
@@ -108,7 +108,7 @@ function getSong(query: string): Promise<Song> {
 					youtube: "video",
 				},
 				limit: 1,
-			})
+			});
 			if (results.length > 0) {
 				resolve(formatSong(results[0]));
 			} else {
@@ -269,150 +269,154 @@ const client = new Rythm({
 client.once("ready", () => {
 	console.log(`Logged in as ${client.user.tag} !`);
 
-	client.guilds.cache.forEach((guild) => {
-		guild.commands.set([
-			{
-				name: "join",
-				description: "Rejoins le salon vocal !",
-				options: [
-					{
-						name: "salon",
-						description: "Le salon à rejoindre",
-						type: ApplicationCommandOptionType.Channel,
-						channelTypes: [ChannelType.GuildVoice, ChannelType.GuildStageVoice],
-						required: false,
-					},
-				],
-			},
-			{
-				name: "play",
-				description: "Joue la musique recherchée !",
-				options: [
-					{
-						name: "query",
-						description: "Nom / Lien de la musique",
-						required: true,
-						type: ApplicationCommandOptionType.String,
-					},
-				],
-			},
-			{
-				name: "search",
-				description: "Propose une liste de musiques à partir d'une recherche",
-				options: [
-					{
-						name: "query",
-						description: "Nom de la musique",
-						required: true,
-						type: ApplicationCommandOptionType.String,
-					},
-					{
-						name: "results",
-						description: "Le nombre de résultats à afficher",
-						type: ApplicationCommandOptionType.Integer,
-						minValue: 1,
-						maxValue: 25,
-						required: false,
-					},
-				],
-			},
-			{
-				name: "clear-queue",
-				description: "Supprimme toutes les musiques de la queue",
-			},
-			{
-				name: "clear",
-				description: "Supprimme une musique de la queue",
-				options: [
-					{
-						name: "position",
-						description: "Position du morceau dans la queue",
-						type: ApplicationCommandOptionType.Integer,
-						required: true,
-					},
-				],
-			},
-			{
-				name: "skip",
-				description: "Skip une musique",
-			},
-			{
-				name: "leave",
-				description: "Quitte le salon",
-			},
-			{
-				name: "queue",
-				description: "Affiche la queue",
-			},
-			{
-				name: "loop",
-				description: "Joue le morceau en boucle",
-			},
-			{
-				name: "loop-queue",
-				description: "Joue la queue en boucle",
-			},
-			{
-				name: "insert",
-				description: "Insère la musique choisie à la place donnée de la queue (au début si non précisé)",
-				options: [
-					{
-						name: "query",
-						description: "Nom / Lien de la musique",
-						required: true,
-						type: ApplicationCommandOptionType.String,
-					},
-					{
-						name: "position",
-						description: "Emplacement où insérer",
-						type: ApplicationCommandOptionType.Integer,
-						required: false,
-					},
-				],
-			},
-			{
-				name: "shuffle",
-				description: "Mélange la queue",
-			},
-			{
-				name: "pause",
-				description: "Met en pause la musique",
-			},
-			{
-				name: "resume",
-				description: "Reprend la musique",
-			},
-			{
-				name: "now-playing",
-				description: "Affiche la musique en cours",
-			},
-			{
-				name: "seek",
-				description: "Joue la musique au moment donné",
-				options: [
-					{
-						name: "position",
-						description: "Position de la musique en secondes",
-						type: ApplicationCommandOptionType.Integer,
-						minValue: 0,
-						required: true,
-					},
-				],
-			},
-			{
-				name: "download",
-				description: "Télécharge la musique",
-				options: [
-					{
-						name: "query",
-						description: "Nom / Lien de la musique",
-						required: true,
-						type: ApplicationCommandOptionType.String,
-					},
-				],
-			},
-		]);
-	});
+	client.application.commands.set([
+		{
+			name: "join",
+			description: "Rejoins le salon vocal !",
+			options: [
+				{
+					name: "salon",
+					description: "Le salon à rejoindre",
+					type: ApplicationCommandOptionType.Channel,
+					channelTypes: [ChannelType.GuildVoice, ChannelType.GuildStageVoice],
+					required: false,
+				},
+			],
+		},
+		{
+			name: "play",
+			description: "Joue la musique recherchée !",
+			options: [
+				{
+					name: "query",
+					description: "Nom / Lien de la musique",
+					required: true,
+					type: ApplicationCommandOptionType.String,
+				},
+			],
+		},
+		{
+			name: "search",
+			description: "Propose une liste de musiques à partir d'une recherche",
+			options: [
+				{
+					name: "query",
+					description: "Nom de la musique",
+					required: true,
+					type: ApplicationCommandOptionType.String,
+				},
+				{
+					name: "results",
+					description: "Le nombre de résultats à afficher",
+					type: ApplicationCommandOptionType.Integer,
+					minValue: 1,
+					maxValue: 25,
+					required: false,
+				},
+			],
+		},
+		{
+			name: "clear-queue",
+			description: "Supprimme toutes les musiques de la queue",
+		},
+		{
+			name: "clear",
+			description: "Supprimme une musique de la queue",
+			options: [
+				{
+					name: "position",
+					description: "Position du morceau dans la queue",
+					type: ApplicationCommandOptionType.Integer,
+					required: true,
+				},
+			],
+		},
+		{
+			name: "skip",
+			description: "Skip une musique",
+		},
+		{
+			name: "leave",
+			description: "Quitte le salon",
+		},
+		{
+			name: "queue",
+			description: "Affiche la queue",
+		},
+		{
+			name: "loop",
+			description: "Joue le morceau en boucle",
+		},
+		{
+			name: "loop-queue",
+			description: "Joue la queue en boucle",
+		},
+		{
+			name: "insert",
+			description: "Insère la musique choisie à la place donnée de la queue (au début si non précisé)",
+			options: [
+				{
+					name: "query",
+					description: "Nom / Lien de la musique",
+					required: true,
+					type: ApplicationCommandOptionType.String,
+				},
+				{
+					name: "position",
+					description: "Emplacement où insérer",
+					type: ApplicationCommandOptionType.Integer,
+					required: false,
+				},
+			],
+		},
+		{
+			name: "shuffle",
+			description: "Mélange la queue",
+		},
+		{
+			name: "pause",
+			description: "Met en pause la musique",
+		},
+		{
+			name: "resume",
+			description: "Reprend la musique",
+		},
+		{
+			name: "now-playing",
+			description: "Affiche la musique en cours",
+		},
+		{
+			name: "seek",
+			description: "Joue la musique au moment donné",
+			options: [
+				{
+					name: "position",
+					description: "Position de la musique en secondes",
+					type: ApplicationCommandOptionType.Integer,
+					minValue: 0,
+					required: true,
+				},
+			],
+		},
+		{
+			name: "download",
+			description: "Télécharge la musique",
+			options: [
+				{
+					name: "query",
+					description: "Nom / Lien de la musique",
+					required: true,
+					type: ApplicationCommandOptionType.String,
+				},
+				{
+					name: "mp4",
+					description: "Télécharger au format mp4 (si possible)",
+					required: false,
+					type: ApplicationCommandOptionType.Boolean
+				}
+			],
+		},
+	]);
 });
 
 client.on("interactionCreate", async (interaction) => {
@@ -481,19 +485,27 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		await interaction.deferReply();
-		const stream = ytdl(song.url, {
-			quality: "highestaudio",
-			highWaterMark: 16384,
+
+		const allowMp4 = interaction.options.getBoolean("mp4") ?? false
+
+		const info = ytdl.chooseFormat((await ytdl.getInfo(song.url)).formats, {
+			filter: (f) => parseInt(f.contentLength) <= 24 * 1024 * 1024 && f.hasAudio && (!f.hasVideo || allowMp4),
 		});
+
+		const stream = ytdl(song.url, {
+			highWaterMark: 16384,
+			filter: (f) => parseInt(f.contentLength) <= 24 * 1024 * 1024 && f.hasAudio && (!f.hasVideo || allowMp4)
+		});
+
 
 		try {
 			await interaction.editReply({
-				content: `🎶 **${song.title}** a été téléchargé !`,
-				files: [new AttachmentBuilder(stream).setName(song.title + ".mp3")],
+				content: `🎶 **${song.title}** a été téléchargé !${!info.hasVideo && allowMp4 ? "\nJe n'ai trouvé que l'audio de taille compatible 😣😣😣" : ""}`,
+				files: [new AttachmentBuilder(stream).setName(song.title + (info.hasVideo ? ".mp4" : ".mp3"))],
 			});
 		} catch (err) {
 			await interaction.editReply({
-				embeds: [generateErrorEmbed(err)]
+				embeds: [generateErrorEmbed(err)],
 			});
 		}
 	}
@@ -507,7 +519,7 @@ client.on("interactionCreate", async (interaction) => {
 		}
 		if (!getVoiceConnection(guildId)) {
 			await (interaction.member as GuildMember).fetch();
-			const channel = (interaction.member as GuildMember).voice?.channel ?? ((interaction.channel.isVoiceBased() && interaction.channel.joinable) ? interaction.channel : null);
+			const channel = (interaction.member as GuildMember).voice?.channel ?? (interaction.channel.isVoiceBased() && interaction.channel.joinable ? interaction.channel : null);
 			if (channel) {
 				registerConnection(
 					guildId,
@@ -538,12 +550,7 @@ client.on("interactionCreate", async (interaction) => {
 					embed.addFields([
 						{
 							name: "Temps avant de le jouer",
-							value: durationToTime(
-								client.queue.get(guildId).playBegin -
-									Math.floor(Date.now() / 1000) +
-									client.queue.get(guildId).playing.duration +
-									(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
-							),
+							value: durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration + (client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)),
 							inline: true,
 						},
 						{
@@ -581,12 +588,7 @@ client.on("interactionCreate", async (interaction) => {
 					videoEmbed.addFields([
 						{
 							name: "Temps avant de le jouer",
-							value: durationToTime(
-								client.queue.get(guildId).playBegin -
-									Math.floor(Date.now() / 1000) +
-									client.queue.get(guildId).playing.duration +
-									(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
-							),
+							value: durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration + (client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)),
 							inline: true,
 						},
 						{
@@ -734,12 +736,7 @@ client.on("interactionCreate", async (interaction) => {
 						videoEmbed.addFields([
 							{
 								name: "Temps avant de le jouer",
-								value: durationToTime(
-									client.queue.get(guildId).playBegin -
-										Math.floor(Date.now() / 1000) +
-										client.queue.get(guildId).playing.duration +
-										(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
-								),
+								value: durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration + (client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)),
 								inline: true,
 							},
 							{
@@ -775,16 +772,15 @@ client.on("interactionCreate", async (interaction) => {
 				}
 				collector.stop("ok");
 			});
-			
+
 			collector.on("end", (_, r) => {
 				if (r !== "ok") {
 					interaction.editReply("Annulé (timeout)...");
 					return;
 				}
-			})
-
+			});
 		} catch (e: unknown) {
-			await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())]});
+			await interaction.editReply({ embeds: [generateErrorEmbed(e.toString())] });
 		}
 	} else if (commandName === "skip") {
 		if (!getVoiceConnection(guildId)) {
@@ -813,9 +809,7 @@ client.on("interactionCreate", async (interaction) => {
 			.concat(client.queue.get(guildId).queue)
 			.map((e, i, a) =>
 				i === 0
-					? `__Now playing__ :\n [${e.title}](${e.url}) | \`${durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration)}\`${
-							a.length > 1 ? "\n\n__Up Next__ :" : ""
-					  }`
+					? `__Now playing__ :\n [${e.title}](${e.url}) | \`${durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration)}\`${a.length > 1 ? "\n\n__Up Next__ :" : ""}`
 					: `\`${i}\` | [${e.title}](${e.url}) | \`${durationToTime(e.duration)}\`\n`
 			);
 		const getContent = (p: number) => pages.slice(p * 10, p * 10 + 10).join("\n");
@@ -870,10 +864,7 @@ client.on("interactionCreate", async (interaction) => {
 							.setDescription(
 								getContent(page) +
 									`\n**${client.queue.get(guildId).queue.length} musique(s) dans la queue | Temps total : ${durationToTime(
-										client.queue.get(guildId).playBegin -
-											Math.floor(Date.now() / 1000) +
-											client.queue.get(guildId).playing.duration +
-											(client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
+										client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration + (client.queue.get(guildId).queue.reduce((p, c) => p + c.duration, 0) || 0)
 									)}**`
 							)
 							.setFooter({
