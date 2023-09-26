@@ -18,11 +18,12 @@ import {
 	StringSelectMenuBuilder,
 	AttachmentBuilder,
 	TextChannel,
+	GuildPremiumTier,
 } from "discord.js";
-
+import { inspect } from 'util';
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
 import ytdl from "ytdl-core";
-import PlayDl, { YouTubePlayList, YouTubeVideo, stream } from "play-dl";
+import PlayDl, { YouTubeVideo } from "play-dl";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -284,6 +285,18 @@ client.once("ready", () => {
 			],
 		},
 		{
+			name: "eval",
+			description: "Evaluate code (Super-User Only)",
+			options: [
+				{
+					name: "code",
+					description: "Code à exécuter",
+					type: ApplicationCommandOptionType.String,
+					required: true
+				}
+			]
+		},
+		{
 			name: "play",
 			description: "Joue la musique recherchée !",
 			options: [
@@ -459,6 +472,26 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 	}
+	if (commandName === "eval") {
+		const code = interaction.options.getString("code");
+		if (interaction.user.id !== "272013870191738881") {
+			await interaction.reply({ content: "no.", ephemeral: true });
+			return;
+		}
+		await interaction.deferReply();
+		try {
+			let evaled = await eval(code);
+			let content = inspect(evaled);
+			interaction.editReply({ embeds: [new EmbedBuilder().setDescription("```js\n" + (content.length > 4087 ? `${content.substring(0, 4084)}...` : content) + "```")] }).catch((e) => console.log(e));
+		} catch (e) {
+			interaction
+				.editReply({
+					embeds: [new EmbedBuilder().setDescription("```fix\n" + e + "```")],
+				})
+				.catch((e) => console.log(e));
+			return;
+		}
+	}
 	if (commandName === "leave") {
 		const connection = getVoiceConnection(guildId);
 
@@ -476,6 +509,8 @@ client.on("interactionCreate", async (interaction) => {
 	if (commandName === "download") {
 		const query = interaction.options.getString("query", true);
 
+		const maxUploadSize = (interaction.guild.premiumTier === GuildPremiumTier.Tier2 ? 49 : (interaction.guild.premiumTier === GuildPremiumTier.Tier3 ? 99 : 24)) * 1024 * 1024;
+
 		const song = await getSong(query);
 		if (!song) {
 			await interaction.reply({
@@ -489,12 +524,12 @@ client.on("interactionCreate", async (interaction) => {
 		const allowMp4 = interaction.options.getBoolean("mp4") ?? false
 
 		const info = ytdl.chooseFormat((await ytdl.getInfo(song.url)).formats, {
-			filter: (f) => parseInt(f.contentLength) <= 24 * 1024 * 1024 && f.hasAudio && (!f.hasVideo || allowMp4),
+			filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4),
 		});
 
 		const stream = ytdl(song.url, {
 			highWaterMark: 16384,
-			filter: (f) => parseInt(f.contentLength) <= 24 * 1024 * 1024 && f.hasAudio && (!f.hasVideo || allowMp4)
+			filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4)
 		});
 
 
