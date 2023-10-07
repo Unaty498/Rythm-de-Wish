@@ -20,7 +20,7 @@ import {
 	TextChannel,
 	GuildPremiumTier,
 } from "discord.js";
-import { inspect } from 'util';
+import { inspect } from "util";
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
 import ytdl from "ytdl-core";
 import PlayDl, { YouTubeVideo } from "play-dl";
@@ -58,6 +58,7 @@ interface Playlist {
 function getPlaylist(url: string): Promise<Playlist> {
 	return new Promise(async (resolve, reject) => {
 		try {
+			url = formatURL(url);
 			const res = await PlayDl.playlist_info(url, { incomplete: true });
 			const songs = (await res.all_videos()).map(formatSong);
 			resolve({
@@ -75,6 +76,16 @@ function getPlaylist(url: string): Promise<Playlist> {
 			reject("Couldn't find/get the playlist.");
 		}
 	});
+}
+
+function formatURL(url: string) {
+	if (url.includes("list")) {
+		return `https://youtube.com/playlist?list=${/list=([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
+	} else if (url.includes("youtu.be")) {
+		return `https://youtube.com/watch?v=${/youtu.be\/([a-zA-Z1-9]*?)(?:&|$)/.exec(url)[1]}`;
+	} else {
+		return `https://youtube.com/watch?v=${/watch\?v=([a-zA-Z1-9]*?)(?:&|$)/.exec(url)[1]}`;
+	}
 }
 
 function formatSong(song: YouTubeVideo): Song {
@@ -98,7 +109,8 @@ function formatSong(song: YouTubeVideo): Song {
 function getSong(query: string): Promise<Song> {
 	return new Promise(async (resolve, reject) => {
 		try {
-			if (query.startsWith("https://") && PlayDl.yt_validate(query) === "video") {
+			if (query.startsWith("https://")) query = formatURL(query);
+			if (PlayDl.yt_validate(query) === "video") {
 				PlayDl.video_basic_info(query).then(({ video_details: res }) => {
 					resolve(formatSong(res));
 					return;
@@ -267,10 +279,10 @@ const client = new Rythm({
 	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
-client.once("ready", () => {
+client.once("ready", async () => {
 	console.log(`Logged in as ${client.user.tag} !`);
 
-	client.application.commands.set([
+	await client.application.commands.set([
 		{
 			name: "join",
 			description: "Rejoins le salon vocal !",
@@ -292,9 +304,9 @@ client.once("ready", () => {
 					name: "code",
 					description: "Code à exécuter",
 					type: ApplicationCommandOptionType.String,
-					required: true
-				}
-			]
+					required: true,
+				},
+			],
 		},
 		{
 			name: "play",
@@ -425,8 +437,8 @@ client.once("ready", () => {
 					name: "mp4",
 					description: "Télécharger au format mp4 (si possible)",
 					required: false,
-					type: ApplicationCommandOptionType.Boolean
-				}
+					type: ApplicationCommandOptionType.Boolean,
+				},
 			],
 		},
 	]);
@@ -507,33 +519,31 @@ client.on("interactionCreate", async (interaction) => {
 		}
 	}
 	if (commandName === "download") {
+		await interaction.deferReply();
 		const query = interaction.options.getString("query", true);
 
-		const maxUploadSize = (interaction.guild.premiumTier === GuildPremiumTier.Tier2 ? 49 : (interaction.guild.premiumTier === GuildPremiumTier.Tier3 ? 99 : 24)) * 1024 * 1024;
-
-		const song = await getSong(query);
-		if (!song) {
-			await interaction.reply({
-				content: "Aucune musique trouvée !",
-				ephemeral: true,
-			});
-			return;
-		}
-		await interaction.deferReply();
-
-		const allowMp4 = interaction.options.getBoolean("mp4") ?? false
-
-		const info = ytdl.chooseFormat((await ytdl.getInfo(song.url)).formats, {
-			filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4),
-		});
-
-		const stream = ytdl(song.url, {
-			highWaterMark: 16384,
-			filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4)
-		});
-
+		const maxUploadSize = (interaction.guild.premiumTier === GuildPremiumTier.Tier2 ? 49 : interaction.guild.premiumTier === GuildPremiumTier.Tier3 ? 99 : 24) * 1024 * 1024;
 
 		try {
+			const song = await getSong(query);
+			if (!song) {
+				await interaction.editReply({
+					content: "Aucune musique trouvée !",
+				});
+				return;
+			}
+
+			const allowMp4 = interaction.options.getBoolean("mp4") ?? false;
+
+			const info = ytdl.chooseFormat((await ytdl.getInfo(song.url)).formats, {
+				filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4),
+			});
+
+			const stream = ytdl(song.url, {
+				highWaterMark: 16384,
+				filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4),
+			});
+
 			await interaction.editReply({
 				content: `🎶 **${song.title}** a été téléchargé !${!info.hasVideo && allowMp4 ? "\nJe n'ai trouvé que l'audio de taille compatible 😣😣😣" : ""}`,
 				files: [new AttachmentBuilder(stream).setName(song.title + (info.hasVideo ? ".mp4" : ".mp3"))],
@@ -544,6 +554,7 @@ client.on("interactionCreate", async (interaction) => {
 			});
 		}
 	}
+
 	if (commandName === "play") {
 		if (!client.queue.has(guildId)) {
 			client.queue.set(guildId, {
