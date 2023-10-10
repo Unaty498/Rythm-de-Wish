@@ -81,10 +81,10 @@ function getPlaylist(url: string): Promise<Playlist> {
 function formatURL(url: string) {
 	if (url.includes("list")) {
 		return `https://youtube.com/playlist?list=${/list=([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
-	} else if (url.includes("youtu.be")) {
-		return `https://youtube.com/watch?v=${/youtu.be\/([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
+	} else if (url.includes("youtu.be/")) {
+		return `https://youtube.com/watch?v=${/youtu.be\/([a-zA-Z1-9_\-]*?)(?:\?|&|$)/.exec(url)[1]}`;
 	} else {
-		return `https://youtube.com/watch?v=${/watch\?v=([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
+		return `https://youtube.com/watch?v=${/v=([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
 	}
 }
 
