@@ -110,7 +110,7 @@ function getSong(query: string): Promise<Song> {
 	return new Promise(async (resolve, reject) => {
 		try {
 			if (query.startsWith("https://")) query = formatURL(query);
-			if (PlayDl.yt_validate(query) === "video") {
+			if (/^https:\/\/youtube\.com\/watch\?v=[a-zA-Z1-9_\-]*$/.test(query)) {
 				PlayDl.video_basic_info(query).then(({ video_details: res }) => {
 					resolve(formatSong(res));
 					return;
