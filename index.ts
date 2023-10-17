@@ -80,11 +80,11 @@ function getPlaylist(url: string): Promise<Playlist> {
 
 function formatURL(url: string) {
 	if (url.includes("list")) {
-		return `https://youtube.com/playlist?list=${/list=([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
+		return `https://www.youtube.com/playlist?list=${/list=([a-zA-Z0-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
 	} else if (url.includes("youtu.be/")) {
-		return `https://youtube.com/watch?v=${/youtu.be\/([a-zA-Z1-9_\-]*?)(?:\?|&|$)/.exec(url)[1]}`;
+		return `https://www.youtube.com/watch?v=${/youtu.be\/([a-zA-Z0-9_\-]*?)(?:\?|&|$)/.exec(url)[1]}`;
 	} else {
-		return `https://youtube.com/watch?v=${/v=([a-zA-Z1-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
+		return `https://www.youtube.com/watch?v=${/v=([a-zA-Z0-9_\-]*?)(?:&|$)/.exec(url)[1]}`;
 	}
 }
 
@@ -110,7 +110,7 @@ function getSong(query: string): Promise<Song> {
 	return new Promise(async (resolve, reject) => {
 		try {
 			if (query.startsWith("https://")) query = formatURL(query);
-			if (/^https:\/\/www\.youtube\.com\/watch\?v=[a-zA-Z1-9_\-]*$/.test(query)) {
+			if (/https:\/\/www\.youtube\.com\/watch\?v=[a-zA-Z0-9_\-]*/.test(query)) {
 				PlayDl.video_basic_info(query).then(({ video_details: res }) => {
 					resolve(formatSong(res));
 					return;
