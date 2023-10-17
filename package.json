@@ -20,7 +20,7 @@
 	"homepage": "https://github.com/Unaty498/Rythm-de-Wish#readme",
 	"dependencies": {
 		"@discordjs/voice": "^0.16.0",
-		"bufferutil": "^4.0.7",
+		"bufferutil": "^4.0.8",
 		"discord.js": "^14.13.0",
 		"dotenv": "^16.3.1",
 		"erlpack": "github:discord/erlpack",
