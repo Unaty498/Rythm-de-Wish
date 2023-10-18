@@ -276,7 +276,7 @@ class Rythm extends Client {
 }
 
 const client = new Rythm({
-	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers],
 });
 
 client.once("ready", async () => {
