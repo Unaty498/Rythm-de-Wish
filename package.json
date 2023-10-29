@@ -20,6 +20,7 @@
 	"homepage": "https://github.com/Unaty498/Rythm-de-Wish#readme",
 	"dependencies": {
 		"@discordjs/voice": "^0.16.0",
+		"@distube/ytdl-core": "^4.13.2",
 		"bufferutil": "^4.0.8",
 		"discord.js": "^14.13.0",
 		"dotenv": "^16.3.1",
@@ -29,7 +30,6 @@
 		"play-dl": "^1.9.7",
 		"typescript": "^5.2.2",
 		"utf-8-validate": "^6.0.3",
-		"ytdl-core": "git+ssh://git@github.com:khlevon/node-ytdl-core.git#v4.11.4-patch.2",
-		"zlib-sync": "^0.1.8"
+		"zlib-sync": "^0.1.9"
 	}
 }

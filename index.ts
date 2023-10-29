@@ -22,7 +22,7 @@ import {
 } from "discord.js";
 import { inspect } from "util";
 import { AudioPlayerStatus, createAudioPlayer, createAudioResource, getVoiceConnection, getVoiceConnections, joinVoiceChannel, AudioPlayer, VoiceConnectionStatus, VoiceConnection } from "@discordjs/voice";
-import ytdl from "ytdl-core";
+import ytdl from "@distube/ytdl-core";
 import PlayDl, { YouTubeVideo } from "play-dl";
 import dotenv from "dotenv";
 dotenv.config();
@@ -696,7 +696,7 @@ client.on("interactionCreate", async (interaction) => {
 					},
 					{
 						name: "Position dans la queue :",
-						value: `**${index}**`,
+						value: `**${index+1}**`,
 					},
 				]);
 			} else {
@@ -718,7 +718,7 @@ client.on("interactionCreate", async (interaction) => {
 					},
 					{
 						name: "Position dans la queue :",
-						value: `**${index}**`,
+						value: `**1**`,
 					},
 				]);
 			}
