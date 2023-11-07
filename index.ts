@@ -162,7 +162,7 @@ function generateEmbed(song: Song, user: User): EmbedBuilder {
 			{ name: "Durée", value: durationToTime(song.duration), inline: true },
 		])
 		.setFooter({
-			text: "Made by @unaty",
+			text: "Made with ❤️ by @unaty",
 			iconURL: "https://cdn.discordapp.com/avatars/272013870191738881/049f3e0331f80997e421a1c7cd58fe5b.webp",
 		});
 }
@@ -181,7 +181,7 @@ function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 			{ name: "Songs", value: playlist.songs.length.toString(), inline: true },
 		])
 		.setFooter({
-			text: "Made by @unaty",
+			text: "Made with ❤️ by @unaty",
 			iconURL: "https://cdn.discordapp.com/avatars/272013870191738881/049f3e0331f80997e421a1c7cd58fe5b.webp",
 		});
 }
@@ -869,7 +869,7 @@ client.on("interactionCreate", async (interaction) => {
 					)}**`
 			)
 			.setFooter({
-				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"} | made by @unaty`,
+				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"} | made with ❤️ by @unaty`,
 				iconURL: interaction.user.avatarURL({ extension: "png" }),
 			});
 		if (calcTotalPages() > 1) {
@@ -914,7 +914,7 @@ client.on("interactionCreate", async (interaction) => {
 									)}**`
 							)
 							.setFooter({
-								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"} | Made by @unaty`,
+								text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${client.queue.get(guildId).loop ? "✅" : "❌"} | Queue Loop: ${client.queue.get(guildId).loopQueue ? "✅" : "❌"} | made with ❤️ by @unaty`,
 								iconURL: interaction.user.avatarURL({ extension: "png" }),
 							}),
 					],
@@ -1080,13 +1080,13 @@ client.on("playUpdate", async (guildId: string) => {
 	const { player, playing, loopQueue } = client.queue.get(guildId);
 	if (playing.id) {
 		try {
-			client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000);
 			const stream = await PlayDl.stream(playing.id);
 			const resource = createAudioResource(stream.stream, {
 				inputType: stream.type,
 			});
 			player.play(resource);
 			getVoiceConnection(guildId).subscribe(player);
+			client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000);
 		} catch (e) {
 			await (client.channels.cache.get(client.queue.get(guildId).channel) as TextChannel).send({
 				embeds: [generateErrorEmbed("\u200b").setDescription(`Une erreur est survenue lors de la lecture de la musique : [${playing.title}](${playing.url})\n${e}`)],
