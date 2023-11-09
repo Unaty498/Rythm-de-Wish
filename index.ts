@@ -863,7 +863,7 @@ client.on("interactionCreate", async (interaction) => {
 			.concat(client.queue.get(guildId).queue)
 			.map((e, i, a) =>
 				i === 0
-					? `__Now playing__ :\n [${e.title}](${e.url}) | \`${durationToTime(client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration)}\`${a.length > 1 ? "\n\n__Up Next__ :" : ""}`
+					? `__Now playing__ :\n [${e.title}](${e.url}) | \`${durationToTime(client.queue.get(guildId).paused ? (client.queue.get(guildId).playing.duration - client.queue.get(guildId).musicTimePaused) : (client.queue.get(guildId).playBegin - Math.floor(Date.now() / 1000) + client.queue.get(guildId).playing.duration))}\`${a.length > 1 ? "\n\n__Up Next__ :" : ""}`
 					: `\`${i}\` | [${e.title}](${e.url}) | \`${durationToTime(e.duration)}\`\n`
 			);
 		const getContent = (p: number) => pages.slice(p * 10, p * 10 + 10).join("\n");
@@ -1051,7 +1051,7 @@ client.on("interactionCreate", async (interaction) => {
 			return;
 		}
 		const song = client.queue.get(guildId).playing;
-		const seconds = Math.floor(Date.now() / 1000) - client.queue.get(guildId).playBegin;
+		const seconds = client.queue.get(guildId).paused ? client.queue.get(guildId).musicTimePaused : Math.floor(Date.now() / 1000) - client.queue.get(guildId).playBegin;
 		const chapter = song.chapters.find((chapter, index, array) => chapter.seconds <= seconds && (index === array.length - 1 || array[index + 1].seconds > seconds));
 		const state = Math.floor(((Math.floor(Date.now() / 1000) - client.queue.get(guildId).playBegin) / song.duration) * 30);
 		const string = `${"▬".repeat(state)}🔘${"▬".repeat(29 - state)}`;
