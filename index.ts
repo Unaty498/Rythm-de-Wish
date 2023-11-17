@@ -217,6 +217,10 @@ function durationToTime(duration: number): string {
 	return str;
 }
 
+function timeToDuration(time: string): number {
+	return time.trim().split(':').toReversed().map(Number).reduce((p,c,i)=>p+c*Math.pow(60,i),0)
+}
+
 function registerPlayer(guildId: string): void {
 	const { player } = client.queue.get(guildId);
 	player.on(AudioPlayerStatus.Idle, () => {
@@ -1073,7 +1077,8 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		const seconds = interaction.options.getInteger("position", true);
+		const string = interaction.options.getString("position", true);
+		const seconds = Number.isInteger(Number(string)) ? Number(string) : timeToDuration(string);
 		if (seconds > client.queue.get(guildId).playing.duration) {
 			await interaction.reply("La durée doit être inférieure à " + client.queue.get(guildId).playing.duration + " secondes !");
 			return;
