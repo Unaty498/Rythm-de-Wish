@@ -218,7 +218,7 @@ function durationToTime(duration: number): string {
 }
 
 function timeToDuration(time: string): number {
-	return time.trim().split(':').toReversed().map(Number).reduce((p,c,i)=>p+c*Math.pow(60,i),0)
+	return time.split(':').toReversed().map(Number).reduce((p,c,i)=>p+c*Math.pow(60,i),0)
 }
 
 function registerPlayer(guildId: string): void {
@@ -435,8 +435,7 @@ client.once("ready", async () => {
 				{
 					name: "position",
 					description: "Position de la musique en secondes",
-					type: ApplicationCommandOptionType.Integer,
-					minValue: 0,
+					type: ApplicationCommandOptionType.String,
 					required: true,
 				},
 			],
@@ -1077,19 +1076,23 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.reply("Aucun morceau n'est joué !");
 			return;
 		}
-		const string = interaction.options.getString("position", true);
+		const string = interaction.options.getString("position", true).trim();
+		if (!/^[0-9]{1,2}(?:\:[0-9]{1,2})*$/.test(string) && !Number.isInteger(Number(string))) {
+			await interaction.reply("Durée invalide ! 🤨");
+		}
 		const seconds = Number.isInteger(Number(string)) ? Number(string) : timeToDuration(string);
 		if (seconds > client.queue.get(guildId).playing.duration) {
 			await interaction.reply("La durée doit être inférieure à " + client.queue.get(guildId).playing.duration + " secondes !");
 			return;
 		}
+		await interaction.deferReply();
 		const stream = await PlayDl.stream(client.queue.get(guildId).playing.id, { seek: seconds });
 		const resource = createAudioResource(stream.stream, {
 			inputType: stream.type,
 		});
 		client.queue.get(guildId).player.play(resource);
 		client.queue.get(guildId).playBegin = Math.floor(Date.now() / 1000) - seconds;
-		await interaction.reply("⏯ Positionné à `" + durationToTime(seconds) + "` !");
+		await interaction.editReply("⏯ Positionné à `" + durationToTime(seconds) + "` !");
 	}
 });
 
