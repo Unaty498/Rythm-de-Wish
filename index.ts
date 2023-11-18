@@ -554,13 +554,14 @@ client.on("interactionCreate", async (interaction) => {
 
 			const allowMp4 = interaction.options.getBoolean("mp4") ?? false;
 
+
 			const info = ytdl.chooseFormat((await ytdl.getInfo(song.url)).formats, {
-				filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4),
+				filter: (f) => parseInt(f.contentLength) <= maxUploadSize && (f.hasVideo || f.hasAudio) && (!f.hasVideo || allowMp4),
 			});
 
 			const stream = ytdl(song.url, {
 				highWaterMark: 16384,
-				filter: (f) => parseInt(f.contentLength) <= maxUploadSize && f.hasAudio && (!f.hasVideo || allowMp4),
+				filter: (f) => parseInt(f.contentLength) <= maxUploadSize && (f.hasVideo || f.hasAudio) && (!f.hasVideo || allowMp4),
 			});
 
 			await interaction.editReply({
