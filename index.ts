@@ -218,7 +218,7 @@ function durationToTime(duration: number): string {
 }
 
 function timeToDuration(time: string): number {
-	return time.split(':').toReversed().map(Number).reduce((p,c,i)=>p+c*Math.pow(60,i),0)
+	return time.split(':').map(Number).reduce((p,c,i,a)=>p+c*Math.pow(60,a.length-i-1),0)
 }
 
 function registerPlayer(guildId: string): void {

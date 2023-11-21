@@ -28,7 +28,7 @@
 		"ffmpeg-static": "^5.2.0",
 		"libsodium-wrappers": "^0.7.13",
 		"play-dl": "^1.9.7",
-		"typescript": "^5.2.2",
+		"typescript": "^5.3.2",
 		"utf-8-validate": "^6.0.3",
 		"zlib-sync": "^0.1.9"
 	}
