@@ -23,6 +23,10 @@ import {
 	TextInputComponent,
 	TextInputBuilder,
 	TextInputStyle,
+	escapeBold,
+	bold,
+	hyperlink,
+	italic,
 } from "discord.js";
 import { inspect } from "util";
 import {
@@ -186,7 +190,7 @@ function generateEmbed(song: Song, user: User): EmbedBuilder {
 			name: "Ajouté à la queue",
 			iconURL: user.avatarURL({ extension: "png" }),
 		})
-		.setDescription(`**[${song.title}](${song.url})**`)
+		.setDescription(bold(hyperlink(song.title, song.url)))
 		.setThumbnail(song.thumbnail)
 		.addFields([
 			{ name: "Auteur", value: song.artist.name, inline: true },
@@ -202,14 +206,14 @@ function generateEmbed(song: Song, user: User): EmbedBuilder {
 				"https://cdn.discordapp.com/avatars/272013870191738881/049f3e0331f80997e421a1c7cd58fe5b.webp",
 		});
 }
-
+escapeBold
 function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 	return new EmbedBuilder()
 		.setAuthor({
 			name: "Ajouté à la queue",
 			iconURL: user.avatarURL({ extension: "png" }),
 		})
-		.setDescription(`**[${playlist.title}](${playlist.url})**`)
+		.setDescription(bold(hyperlink(playlist.title, playlist.url)))
 		.setThumbnail(playlist.thumbnail)
 		.addFields([
 			{ name: "Auteur", value: playlist.artist.name, inline: true },
@@ -710,7 +714,7 @@ client.on("interactionCreate", async (interaction) => {
 			});
 
 			await interaction.editReply({
-				content: `🎶 **${song.title}** a été téléchargé !${
+				content: `🎶 ${bold(song.title)} a été téléchargé !${
 					!info.hasVideo && allowMp4
 						? "\nJe n'ai trouvé que l'audio de taille compatible 😣😣😣"
 						: ""
@@ -785,13 +789,13 @@ client.on("interactionCreate", async (interaction) => {
 						},
 						{
 							name: "Position dans la queue :",
-							value: `**${
+							value: bold(`${
 								client.queue.get(guildId).queue.length + 1
 							}-${
 								client.queue.get(guildId).queue.length +
 								playlist.songs.length +
 								1
-							}**`,
+							}`),
 						},
 					]);
 					client.queue.get(guildId).queue = client.queue
@@ -835,9 +839,7 @@ client.on("interactionCreate", async (interaction) => {
 						},
 						{
 							name: "Position dans la queue :",
-							value: `**${
-								client.queue.get(guildId).queue.length + 1
-							}**`,
+							value: bold((client.queue.get(guildId).queue.length + 1).toString()),
 						},
 					]);
 					client.queue.get(guildId).queue.push(song);
@@ -900,7 +902,7 @@ client.on("interactionCreate", async (interaction) => {
 					},
 					{
 						name: "Position dans la queue :",
-						value: `**${index + 1}**`,
+						value: bold((index + 1).toString()),
 					},
 				]);
 			} else {
@@ -914,7 +916,7 @@ client.on("interactionCreate", async (interaction) => {
 					},
 					{
 						name: "Position dans la queue :",
-						value: `**1**`,
+						value: bold(`1`),
 					},
 				]);
 			}
@@ -1000,9 +1002,8 @@ client.on("interactionCreate", async (interaction) => {
 							},
 							{
 								name: "Position dans la queue :",
-								value: `**${
-									client.queue.get(guildId).queue.length + 1
-								}**`,
+								value: bold((client.queue.get(guildId).queue.length + 1).toString())
+								,
 							},
 						]);
 						client.queue.get(guildId).queue.push(song);
@@ -1074,9 +1075,7 @@ client.on("interactionCreate", async (interaction) => {
 			.concat(client.queue.get(guildId).queue)
 			.map((e, i, a) =>
 				i === 0
-					? `__Now playing__ :\n [${e.title}](${
-							e.url
-					  }) | \`${durationToTime(
+					? `__Now playing__ :\n ${hyperlink(e.title, e.url)} | \`${durationToTime(
 							client.queue.get(guildId).paused
 								? client.queue.get(guildId).playing.duration -
 										client.queue.get(guildId)
@@ -1085,8 +1084,8 @@ client.on("interactionCreate", async (interaction) => {
 										Math.floor(Date.now() / 1000) +
 										client.queue.get(guildId).playing
 											.duration
-					  )}\`${a.length > 1 ? "\n\n__Up Next__ :" : ""}`
-					: `\`${i}\` | [${e.title}](${e.url}) | \`${durationToTime(
+					  )}\`${a.length > 1 ? italic("\n\nUp Next :") : ""}`
+					: `\`${i}\` | [${hyperlink(e.title, e.url)} | \`${durationToTime(
 							e.duration
 					  )}\`\n`
 			);
@@ -1096,12 +1095,12 @@ client.on("interactionCreate", async (interaction) => {
 		const queueEmbed = new EmbedBuilder()
 			.setTitle("Queue :")
 			.setDescription(
-				getContent(page) +
-					`\n\n**${
+				getContent(page) + '\n\n' +
+					bold(`${
 						client.queue.get(guildId).queue.length
 					} musique(s) dans la queue | Temps total : ${durationToTime(
 						getTime(guildId)
-					)}**`
+					)}`)
 			)
 			.setFooter({
 				text: `Page ${page + 1}/${calcTotalPages()} | Loop: ${
@@ -1156,12 +1155,12 @@ client.on("interactionCreate", async (interaction) => {
 					embeds: [
 						queueEmbed
 							.setDescription(
-								getContent(page) +
-									`\n**${
+								getContent(page) + '\n' +
+									bold(`${
 										client.queue.get(guildId).queue.length
 									} musique(s) dans la queue | Temps total : ${durationToTime(
 										getTime(guildId)
-									)}**`
+									)}`)
 							)
 							.setFooter({
 								text: `Page ${
