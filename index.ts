@@ -23,6 +23,8 @@ import {
 	bold,
 	hyperlink,
 	italic,
+	codeBlock,
+	escapeMarkdown,
 } from "discord.js";
 import { inspect } from "util";
 import {
@@ -40,7 +42,6 @@ import {
 import ytdl from "@distube/ytdl-core";
 import PlayDl, { YouTubeVideo } from "play-dl";
 import dotenv from "dotenv";
-import fs from "node:fs";
 dotenv.config();
 
 interface Song {
@@ -78,7 +79,7 @@ function getPlaylist(url: string): Promise<Playlist> {
 			const res = await PlayDl.playlist_info(url, { incomplete: true });
 			const songs = (await res.all_videos()).map(formatSong);
 			resolve({
-				title: res.title,
+				title: escapeMarkdown(res.title),
 				songs: songs,
 				url: res.url,
 				thumbnail: res.thumbnail.url,
@@ -117,7 +118,7 @@ function formatSong(song: YouTubeVideo): Song {
 	return {
 		id: song.id,
 		duration: song.durationInSec,
-		title: songTitle ?? song.title,
+		title: escapeMarkdown(songTitle ?? song.title),
 		url: song.url,
 		thumbnail: song.thumbnails[0].url,
 		artist: {
@@ -202,7 +203,7 @@ function generateEmbed(song: Song, user: User): EmbedBuilder {
 				"https://cdn.discordapp.com/avatars/272013870191738881/049f3e0331f80997e421a1c7cd58fe5b.webp",
 		});
 }
-escapeBold
+
 function generatePlaylistEmbed(playlist: Playlist, user: User): EmbedBuilder {
 	return new EmbedBuilder()
 		.setAuthor({
@@ -631,11 +632,9 @@ client.on("interactionCreate", async (interaction) => {
 				.editReply({
 					embeds: [
 						new EmbedBuilder().setDescription(
-							"```js\n" +
-								(content.length > 4087
+							codeBlock("js", content.length > 4087
 									? `${content.substring(0, 4084)}...`
-									: content) +
-								"```"
+									: content)
 						),
 					],
 				})
@@ -644,9 +643,7 @@ client.on("interactionCreate", async (interaction) => {
 			interaction
 				.editReply({
 					embeds: [
-						new EmbedBuilder().setDescription(
-							"```fix\n" + e + "```"
-						),
+						new EmbedBuilder().setDescription(codeBlock("fix", e))
 					],
 				})
 				.catch((e) => console.log(e));
