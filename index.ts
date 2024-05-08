@@ -620,11 +620,12 @@ client.on("interactionCreate", async (interaction) => {
 	}
 	if (commandName === "eval") {
 		const code = interaction.options.getString("code");
+		const ephemeral = interaction.options.getBoolean("ephemeral");
 		if (interaction.user.id !== "272013870191738881") {
 			await interaction.reply({ content: "no.", ephemeral: true });
 			return;
 		}
-		await interaction.deferReply();
+		await interaction.deferReply({ ephemeral, fetchReply: true });
 		try {
 			let evaled = await eval(code);
 			let content = inspect(evaled);
