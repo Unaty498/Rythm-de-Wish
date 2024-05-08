@@ -432,6 +432,12 @@ client.once("ready", async () => {
 					type: ApplicationCommandOptionType.String,
 					required: true,
 				},
+				{
+					name: "ephemeral",
+					description: "Réponse ephemeral ?",
+					type: ApplicationCommandOptionType.Boolean,
+					required: false,
+				}
 			],
 		},
 		{
@@ -620,7 +626,7 @@ client.on("interactionCreate", async (interaction) => {
 	}
 	if (commandName === "eval") {
 		const code = interaction.options.getString("code");
-		const ephemeral = interaction.options.getBoolean("ephemeral");
+		const ephemeral = interaction.options.getBoolean("ephemeral") ?? false;
 		if (interaction.user.id !== "272013870191738881") {
 			await interaction.reply({ content: "no.", ephemeral: true });
 			return;
